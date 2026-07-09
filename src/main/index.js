@@ -9,7 +9,8 @@ import {
   dialog,
   Tray,
   Menu,
-  nativeImage
+  nativeImage,
+  net
 } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -31,6 +32,7 @@ let chatHideTimer = null
 let chatMenuTimer = null
 let jokeTimer = null
 let scheduledJobs = {}
+let holidayCache = {}
 
 const dataDir = join(app.getPath('userData'), 'data')
 const clipboardFile = join(dataDir, 'clipboard.json')
@@ -142,8 +144,64 @@ function scheduleTask(task) {
 
   if (!task.enabled || !cron.validate(task.cron)) return
 
-  scheduledJobs[task.id] = cron.schedule(task.cron, () => {
+  scheduledJobs[task.id] = cron.schedule(task.cron, async () => {
+    if (task.dayMode && task.dayMode !== 'all') {
+      const workday = await checkIsWorkday()
+      if (task.dayMode === 'workday' && !workday) return
+      if (task.dayMode === 'holiday' && workday) return
+    }
     executeTask(task)
+  })
+}
+
+function checkIsWorkday() {
+  const today = new Date()
+  const year = today.getFullYear()
+  const dateStr = `${year}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+  if (holidayCache[dateStr] !== undefined) {
+    return Promise.resolve(holidayCache[dateStr])
+  }
+
+  return new Promise((resolve) => {
+    const url = `https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master/${year}.json`
+    const request = net.request(url)
+    let body = ''
+
+    request.on('response', (response) => {
+      response.on('data', (chunk) => { body += chunk.toString() })
+      response.on('end', () => {
+        try {
+          const data = JSON.parse(body)
+          const dayInfo = data.days.find(d => d.date === dateStr)
+          let isWork
+          if (dayInfo) {
+            isWork = !dayInfo.isOffDay
+          } else {
+            const dayOfWeek = today.getDay()
+            isWork = dayOfWeek !== 0 && dayOfWeek !== 6
+          }
+          data.days.forEach(d => {
+            holidayCache[d.date] = !d.isOffDay
+          })
+          const cachedDates = new Set(data.days.map(d => d.date))
+          if (!cachedDates.has(dateStr)) {
+            holidayCache[dateStr] = isWork
+          }
+          resolve(isWork)
+        } catch {
+          const dayOfWeek = today.getDay()
+          resolve(dayOfWeek !== 0 && dayOfWeek !== 6)
+        }
+      })
+    })
+
+    request.on('error', () => {
+      const dayOfWeek = today.getDay()
+      resolve(dayOfWeek !== 0 && dayOfWeek !== 6)
+    })
+
+    request.end()
   })
 }
 

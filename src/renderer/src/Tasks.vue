@@ -43,13 +43,33 @@
       </div>
       <div class="form-row" v-if="form.cronPreset === 'weekly'">
         <label>星期</label>
-        <select v-model="form.weekday">
-          <option v-for="(name, idx) in weekDays" :key="idx" :value="idx">{{ name }}</option>
-        </select>
+        <div class="weekday-checkboxes">
+          <label v-for="(name, idx) in weekDays" :key="idx" class="weekday-item">
+            <input type="checkbox" :value="idx" v-model="form.weekdays" />
+            <span>{{ name }}</span>
+          </label>
+        </div>
       </div>
       <div class="form-row" v-if="!form.cronPreset">
         <label>Cron</label>
         <input v-model="form.cron" placeholder="* * * * *" />
+      </div>
+      <div class="form-row">
+        <label>执行日</label>
+        <div class="day-mode-group">
+          <label class="day-mode-item">
+            <input type="radio" value="all" v-model="form.dayMode" />
+            <span>所有天</span>
+          </label>
+          <label class="day-mode-item">
+            <input type="radio" value="workday" v-model="form.dayMode" />
+            <span>仅工作日</span>
+          </label>
+          <label class="day-mode-item">
+            <input type="radio" value="holiday" v-model="form.dayMode" />
+            <span>仅非工作日</span>
+          </label>
+        </div>
       </div>
       <div class="form-actions">
         <button @click="saveTask">{{ editingId ? '保存' : '添加' }}</button>
@@ -72,7 +92,11 @@
         <tr v-for="task in tasks" :key="task.id">
           <td>{{ task.name }}</td>
           <td>{{ task.type === 'notification' ? '消息提醒' : '打开软件' }}</td>
-          <td class="cron-cell">{{ task.cron }}</td>
+          <td class="cron-cell">
+            {{ task.cron }}
+            <span v-if="task.dayMode === 'workday'" class="day-mode-tag workday">工作日</span>
+            <span v-if="task.dayMode === 'holiday'" class="day-mode-tag holiday">非工作日</span>
+          </td>
           <td>
             <span class="status-tag" :class="{ enabled: task.enabled }">
               {{ task.enabled ? '启用' : '停用' }}
@@ -108,7 +132,8 @@ const form = reactive({
   appPath: '',
   cronPreset: 'daily',
   time: '09:00',
-  weekday: 1,
+  weekdays: [],
+  dayMode: 'all',
   cron: ''
 })
 
@@ -118,6 +143,7 @@ onMounted(async () => {
 
 function onPresetChange() {
   form.cron = ''
+  form.weekdays = []
 }
 
 function buildCron() {
@@ -126,7 +152,10 @@ function buildCron() {
   if (form.cronPreset === 'every-hour') return '0 * * * *'
   const [h, m] = (form.time || '9:00').split(':')
   if (form.cronPreset === 'daily') return `${parseInt(m)} ${parseInt(h)} * * *`
-  if (form.cronPreset === 'weekly') return `${parseInt(m)} ${parseInt(h)} * * ${form.weekday}`
+  if (form.cronPreset === 'weekly') {
+    const days = form.weekdays.length > 0 ? [...form.weekdays].sort((a, b) => a - b).join(',') : '*'
+    return `${parseInt(m)} ${parseInt(h)} * * ${days}`
+  }
   return form.cron
 }
 
@@ -140,18 +169,24 @@ async function saveTask() {
     cron,
     message: form.type === 'notification' ? form.message : '',
     appPath: form.type === 'open-app' ? form.appPath : '',
+    weekdays: [...form.weekdays],
+    dayMode: form.dayMode,
     enabled: true
   }
 
-  if (editingId.value) {
-    data.id = editingId.value
-    await window.api.updateTask(data)
-  } else {
-    await window.api.addTask(data)
+  try {
+    if (editingId.value) {
+      data.id = editingId.value
+      await window.api.updateTask(data)
+    } else {
+      await window.api.addTask(data)
+    }
+    tasks.value = await window.api.getTasks()
+    cancelForm()
+  } catch (e) {
+    console.error('保存任务失败:', e)
+    alert('保存失败: ' + e.message)
   }
-
-  tasks.value = await window.api.getTasks()
-  cancelForm()
 }
 
 function editTask(task) {
@@ -160,6 +195,8 @@ function editTask(task) {
   form.type = task.type
   form.message = task.message || ''
   form.appPath = task.appPath || ''
+  form.weekdays = task.weekdays || []
+  form.dayMode = task.dayMode || 'all'
   form.cronPreset = ''
   form.cron = task.cron
   showForm.value = true
@@ -200,7 +237,8 @@ function cancelForm() {
   form.appPath = ''
   form.cronPreset = 'daily'
   form.time = '09:00'
-  form.weekday = 1
+  form.weekdays = []
+  form.dayMode = 'all'
   form.cron = ''
 }
 </script>
@@ -292,7 +330,7 @@ body {
   color: #5a4a3a;
 }
 
-.form-row input,
+.form-row input:not([type="checkbox"]):not([type="radio"]),
 .form-row select {
   flex: 1;
   padding: 6px 10px;
@@ -304,9 +342,78 @@ body {
   outline: none;
 }
 
-.form-row input:focus,
+.form-row input:not([type="checkbox"]):not([type="radio"]):focus,
 .form-row select:focus {
   border-color: #b08968;
+}
+
+.weekday-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.weekday-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  min-width: auto !important;
+  cursor: pointer;
+  padding: 3px 8px;
+  border: 1px solid #e8ddd0;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.weekday-item:has(input:checked) {
+  background: #d0b798;
+  color: #fff;
+  border-color: #d0b798;
+}
+
+.weekday-item input[type="checkbox"] {
+  display: none;
+}
+
+.day-mode-group {
+  display: flex;
+  gap: 12px;
+}
+
+.day-mode-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  min-width: auto !important;
+  cursor: pointer;
+}
+
+.day-mode-item input[type="radio"] {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  accent-color: #d0b798;
+}
+
+.day-mode-tag {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 6px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.day-mode-tag.workday {
+  background: #e8f0ff;
+  color: #4a6fa5;
+}
+
+.day-mode-tag.holiday {
+  background: #fff0e8;
+  color: #a56a4a;
 }
 
 .form-actions {
