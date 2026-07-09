@@ -3,6 +3,8 @@ import { electronAPI } from '@electron-toolkit/preload'
 
 const api = {
   moveWindow: (dx, dy) => ipcRenderer.send('window-move', { dx, dy }),
+  startDrag: (pos) => ipcRenderer.send('drag-start', pos),
+  endDrag: () => ipcRenderer.send('drag-end'),
   setIgnoreMouse: (ignore) => ipcRenderer.send('set-ignore-mouse', ignore),
   setChatMode: (mode) => ipcRenderer.send('set-chat-mode', mode),
   openSettings: () => ipcRenderer.send('open-settings'),

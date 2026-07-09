@@ -1,5 +1,5 @@
 <template>
-  <div class="chat-wrap" v-show="mode === 'menu' || text">
+  <div class="chat-wrap" :class="['place-' + placement, { visible: isVisible }]">
     <div class="bubble" @mouseenter="onEnter" @mouseleave="onLeave">
       <div class="menu-row" v-if="mode === 'menu'">
         <div class="menu-item" @click="openJsonViewer">
@@ -16,13 +16,12 @@
         </div>
       </div>
       <div class="bubble-text" v-else>{{ text }}</div>
-      <div class="bubble-arrow"></div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Icon, addCollection } from '@iconify/vue'
 import mdiIcons from '@iconify-json/mdi/icons.json'
 
@@ -30,11 +29,20 @@ addCollection(mdiIcons)
 
 const text = ref('')
 const mode = ref('chat')
+const placement = ref('top')
+const visible = ref(false)
+
+const isVisible = computed(() => {
+  if (!visible.value) return false
+  return mode.value === 'menu' || !!text.value
+})
 
 onMounted(() => {
   window.api.onChatUpdate((data) => {
     if (data.text !== undefined) text.value = data.text
     if (data.mode) mode.value = data.mode
+    if (data.placement) placement.value = data.placement
+    if (data.visible !== undefined) visible.value = data.visible
   })
 })
 
@@ -86,30 +94,33 @@ body,
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chat-wrap.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.15s ease;
+}
+
+.chat-wrap.place-bottom,
+.chat-wrap.place-left,
+.chat-wrap.place-right {
+  align-items: flex-start;
 }
 
 .bubble {
   position: relative;
-  max-width: 240px;
+  max-width: 190px;
   min-width: 80px;
+  max-height: calc(100% - 8px);
+  overflow-y: auto;
   background: #fffaf3;
   border: 2px solid #d0b798;
-  border-radius: 14px;
-  padding: 10px 14px;
+  border-radius: 12px;
+  padding: 6px 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 4px;
-}
-
-.bubble-arrow {
-  position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-top: 8px solid #d0b798;
 }
 
 .bubble-text {
@@ -127,9 +138,9 @@ body,
 }
 
 .menu-item {
-  padding: 8px;
+  padding: 4px;
   color: #3a2a1a;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;

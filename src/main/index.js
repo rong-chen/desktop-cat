@@ -15,6 +15,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import cron from 'node-cron'
+import { computePosition, flip, shift, offset } from '@floating-ui/core'
 
 let mainWindow
 let chatWindow
@@ -28,6 +29,7 @@ let clipboardHistory = []
 let clipboardTimer = null
 let chatHideTimer = null
 let chatMenuTimer = null
+let jokeTimer = null
 let scheduledJobs = {}
 
 const dataDir = join(app.getPath('userData'), 'data')
@@ -43,7 +45,15 @@ function subWindowOptions() {
   if (isMac) {
     return { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 12, y: 12 } }
   }
-  return {}
+  return {
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#fffaf3',
+      symbolColor: '#5a4a3a',
+      height: 44
+    },
+    autoHideMenuBar: true
+  }
 }
 
 const defaultShortcuts = {
@@ -239,10 +249,10 @@ function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize
 
   mainWindow = new BrowserWindow({
-    width: 250,
-    height: 300,
-    x: width - 270,
-    y: height - 300,
+    width: 130,
+    height: 130,
+    x: width - 140,
+    y: height - 140,
     icon: appIcon,
     transparent: true,
     frame: false,
@@ -265,22 +275,53 @@ function createWindow() {
   }
 }
 
-const CHAT_W = 280
-const CHAT_H = 80
+const CHAT_W = 200
+const CHAT_H = 180
+const CHAT_OFFSET = 4
 
 function getChatPosition() {
   const [mx, my] = mainWindow.getPosition()
-  const [mw] = mainWindow.getSize()
-  const { width: sw } = screen.getPrimaryDisplay().workAreaSize
-  const catCenterX = mx + mw / 2
-  const x = catCenterX - CHAT_W / 2
-  const y = my - CHAT_H + 10
-  const clampedX = Math.max(0, Math.min(x, sw - CHAT_W))
-  return { x: clampedX, y, side: 'top' }
+  const [mw, mh] = mainWindow.getSize()
+  const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize
+
+  const refRect = { x: mx, y: my, width: mw, height: mh }
+  const floatingSize = { width: CHAT_W, height: CHAT_H }
+
+  return computePosition(refRect, floatingSize, {
+    placement: 'top',
+    middleware: [offset(CHAT_OFFSET), flip(), shift({ padding: 4 })],
+    platform: {
+      getElementRects: () => ({
+        reference: refRect,
+        floating: { x: 0, y: 0, ...floatingSize }
+      }),
+      getDimensions: (el) => ({ width: el.width, height: el.height }),
+      getClippingRect: () => ({ x: 0, y: 0, width: sw, height: sh })
+    }
+  }).then(({ x, y, placement }) => ({ x: Math.round(x), y: Math.round(y), placement }))
 }
 
-function createChatWindow() {
-  const pos = getChatPosition()
+async function showChat() {
+  if (!chatWindow || chatWindow.isDestroyed()) return
+  const pos = await getChatPosition()
+  chatWindow.setPosition(pos.x, pos.y)
+  chatWindow.webContents.send('chat-update', { placement: pos.placement, visible: true })
+}
+
+function hideChat() {
+  if (!chatWindow || chatWindow.isDestroyed()) return
+  chatWindow.webContents.send('chat-update', { visible: false })
+}
+
+async function syncChatPosition() {
+  if (!chatWindow || chatWindow.isDestroyed()) return
+  const pos = await getChatPosition()
+  chatWindow.setPosition(pos.x, pos.y)
+  chatWindow.webContents.send('chat-update', { placement: pos.placement })
+}
+
+async function createChatWindow() {
+  const pos = await getChatPosition()
 
   chatWindow = new BrowserWindow({
     width: CHAT_W,
@@ -294,6 +335,7 @@ function createChatWindow() {
     hasShadow: false,
     resizable: false,
     skipTaskbar: true,
+    show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -309,7 +351,8 @@ function createChatWindow() {
   }
 
   chatWindow.webContents.on('did-finish-load', () => {
-    chatWindow.webContents.send('chat-update', { side: pos.side })
+    chatWindow.webContents.send('chat-update', { placement: pos.placement })
+    chatWindow.showInactive()
     sendChatGreeting()
   })
 
@@ -355,11 +398,15 @@ async function sendChatGreeting() {
 
     if (!res.ok) return
 
+    if (chatWindow && !chatWindow.isDestroyed()) {
+      showChat()
+    }
+
     if (!config.stream) {
       const data = await res.json()
       const content = data.choices?.[0]?.message?.content || ''
       if (chatWindow && !chatWindow.isDestroyed()) {
-        chatWindow.webContents.send('chat-update', { text: content })
+        chatWindow.webContents.send('chat-update', { mode: 'chat', text: content })
       }
       scheduleChatHide()
       return
@@ -371,7 +418,7 @@ async function sendChatGreeting() {
     let fullText = ''
 
     if (chatWindow && !chatWindow.isDestroyed()) {
-      chatWindow.webContents.send('chat-update', { text: '' })
+      chatWindow.webContents.send('chat-update', { mode: 'chat', text: '' })
     }
 
     while (true) {
@@ -409,23 +456,158 @@ async function sendChatGreeting() {
   }
 }
 
-function scheduleChatHide() {
+function scheduleChatHide(delay) {
   if (chatHideTimer) clearTimeout(chatHideTimer)
   chatHideTimer = setTimeout(() => {
     if (chatWindow && !chatWindow.isDestroyed()) {
-      chatWindow.webContents.send('chat-update', { text: '' })
-      chatWindow.hide()
+      chatWindow.webContents.send('chat-update', { visible: false })
+      setTimeout(() => {
+        if (chatWindow && !chatWindow.isDestroyed()) {
+          chatWindow.webContents.send('chat-update', { text: '', mode: 'menu' })
+        }
+      }, 200)
     }
-  }, 5000)
+  }, delay || 5000)
+}
+
+function scheduleRandomJoke() {
+  if (jokeTimer) clearTimeout(jokeTimer)
+  const min = 5 * 60 * 1000
+  const max = 60 * 60 * 1000
+  const delay = Math.floor(Math.random() * (max - min)) + min
+  jokeTimer = setTimeout(() => {
+    sendRandomJoke()
+  }, delay)
+}
+
+function stopRandomJoke() {
+  if (jokeTimer) {
+    clearTimeout(jokeTimer)
+    jokeTimer = null
+  }
+}
+
+async function sendRandomJoke() {
+  const config = loadAiConfig()
+  if (config.mode !== 'decompress' || !config.apiKey || !config.baseUrl) {
+    return
+  }
+
+  const systemPrompt = '你是一只会讲笑话的桌面猫咪。请讲一个笑话，可以是冷笑话、经典笑话、谐音梗、脑筋急转弯、段子等任何类型。要求有趣、有梗，控制在100字以内。每次讲不同类型不同内容的笑话，不要重复。禁止使用括号标注动作或语气。'
+
+  const prompts = [
+    '讲个冷笑话吧',
+    '来个经典笑话',
+    '说个谐音梗',
+    '讲个脑筋急转弯',
+    '来个段子',
+    '讲个动物笑话',
+    '说个职场笑话',
+    '来个程序员笑话',
+    '讲个生活中的搞笑事'
+  ]
+  const userMsg = prompts[Math.floor(Math.random() * prompts.length)]
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userMsg }
+  ]
+
+  const url = config.baseUrl.replace(/\/+$/, '') + '/chat/completions'
+  const body = {
+    model: config.model,
+    messages,
+    temperature: 1.0,
+    max_tokens: config.maxTokens,
+    stream: config.stream
+  }
+
+  try {
+    if (chatWindow && !chatWindow.isDestroyed()) {
+      showChat()
+    }
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    })
+
+    if (!res.ok) {
+      scheduleRandomJoke()
+      return
+    }
+
+    if (!config.stream) {
+      const data = await res.json()
+      const content = data.choices?.[0]?.message?.content || ''
+      if (chatWindow && !chatWindow.isDestroyed()) {
+        chatWindow.webContents.send('chat-update', { mode: 'chat', text: content })
+      }
+      scheduleChatHide(15000)
+      scheduleRandomJoke()
+      return
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let fullText = ''
+
+    if (chatWindow && !chatWindow.isDestroyed()) {
+      chatWindow.webContents.send('chat-update', { mode: 'chat', text: '' })
+    }
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed || !trimmed.startsWith('data: ')) continue
+        const payload = trimmed.slice(6)
+        if (payload === '[DONE]') continue
+
+        try {
+          const json = JSON.parse(payload)
+          const delta = json.choices?.[0]?.delta?.content || ''
+          if (delta) {
+            fullText += delta
+            if (chatWindow && !chatWindow.isDestroyed()) {
+              chatWindow.webContents.send('chat-update', { text: fullText })
+            }
+          }
+        } catch {
+          // skip
+        }
+      }
+    }
+
+    scheduleChatHide(15000)
+  } catch {
+    // silent fail
+  }
+
+  scheduleRandomJoke()
+}
+
+function startJokeIfDecompress() {
+  const config = loadAiConfig()
+  if (config.mode === 'decompress' && config.apiKey && config.baseUrl) {
+    scheduleRandomJoke()
+  } else {
+    stopRandomJoke()
+  }
 }
 
 
-function syncChatPosition() {
-  if (!chatWindow || chatWindow.isDestroyed()) return
-  const pos = getChatPosition()
-  chatWindow.setPosition(pos.x, pos.y)
-  chatWindow.webContents.send('chat-update', { side: pos.side })
-}
 
 function openSettingsWindow() {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
@@ -435,7 +617,7 @@ function openSettingsWindow() {
 
   settingsWindow = new BrowserWindow({
     width: 600,
-    height: 700,
+    height: 640,
     title: '设置 - Desktop Cat',
     icon: appIcon,
     resizable: false,
@@ -595,6 +777,40 @@ function setupIpc() {
     }
   })
 
+  let isDragging = false
+  let dragStartMouse = null
+  let dragStartWin = null
+  let dragPollTimer = null
+
+  ipcMain.on('drag-start', (_, { x, y }) => {
+    isDragging = true
+    const [wx, wy] = mainWindow.getPosition()
+    dragStartMouse = { x, y }
+    dragStartWin = { x: wx, y: wy }
+    hideChat()
+
+    if (dragPollTimer) clearInterval(dragPollTimer)
+    dragPollTimer = setInterval(() => {
+      if (!isDragging) return
+      const cursor = screen.getCursorScreenPoint()
+      const dx = cursor.x - dragStartMouse.x
+      const dy = cursor.y - dragStartMouse.y
+      mainWindow.setPosition(dragStartWin.x + dx, dragStartWin.y + dy)
+    }, 16)
+  })
+
+  ipcMain.on('drag-end', () => {
+    isDragging = false
+    if (dragPollTimer) {
+      clearInterval(dragPollTimer)
+      dragPollTimer = null
+    }
+    if (chatWindow && !chatWindow.isDestroyed()) {
+      showChat()
+      chatWindow.webContents.send('chat-update', { mode: 'menu' })
+    }
+  })
+
   ipcMain.on('window-move', (_, { dx, dy }) => {
     const [x, y] = mainWindow.getPosition()
     mainWindow.setPosition(x + dx, y + dy)
@@ -603,11 +819,11 @@ function setupIpc() {
 
   ipcMain.on('set-chat-mode', (_, mode) => {
     if (!chatWindow || chatWindow.isDestroyed()) return
+    if (isDragging) return
     if (mode === 'menu') {
       if (chatMenuTimer) { clearTimeout(chatMenuTimer); chatMenuTimer = null }
       if (chatHideTimer) { clearTimeout(chatHideTimer); chatHideTimer = null }
-      chatWindow.show()
-      syncChatPosition()
+      showChat()
       chatWindow.webContents.send('chat-update', { mode: 'menu' })
     } else {
       if (chatMenuTimer) clearTimeout(chatMenuTimer)
@@ -615,7 +831,7 @@ function setupIpc() {
         if (!chatWindow || chatWindow.isDestroyed()) return
         chatWindow.webContents.send('chat-update', { mode: 'chat' })
         scheduleChatHide()
-      }, 200)
+      }, 500)
     }
   })
 
@@ -745,6 +961,7 @@ function setupIpc() {
 
   ipcMain.handle('save-ai-config', (_, config) => {
     saveAiConfig(config)
+    startJokeIfDecompress()
     return true
   })
 
@@ -824,7 +1041,7 @@ function setupIpc() {
   })
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.desktop-cat')
 
   if (process.platform === 'darwin') {
@@ -838,11 +1055,12 @@ app.whenReady().then(() => {
   loadData()
   setupIpc()
   createWindow()
-  createChatWindow()
+  await createChatWindow()
   createTray()
   startClipboardWatch()
   registerShortcuts()
   scheduleAllTasks()
+  startJokeIfDecompress()
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

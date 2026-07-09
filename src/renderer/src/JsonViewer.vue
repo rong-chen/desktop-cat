@@ -267,9 +267,18 @@ body {
   background: rgba(255, 250, 243, 0.75);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(208, 183, 152, 0.3);
   z-index: 100;
   -webkit-app-region: drag;
+}
+
+.titlebar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: rgba(208, 183, 152, 0.3);
 }
 
 .json-page {

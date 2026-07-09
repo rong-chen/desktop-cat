@@ -33,23 +33,12 @@ function onLeave() {
 }
 
 function startDrag(e) {
-  let lastX = e.screenX
-  let lastY = e.screenY
-
-  const onMove = (ev) => {
-    const dx = ev.screenX - lastX
-    const dy = ev.screenY - lastY
-    lastX = ev.screenX
-    lastY = ev.screenY
-    window.api.moveWindow(dx, dy)
-  }
+  window.api.startDrag({ x: e.screenX, y: e.screenY })
 
   const onUp = () => {
-    document.removeEventListener('mousemove', onMove)
+    window.api.endDrag()
     document.removeEventListener('mouseup', onUp)
   }
-
-  document.addEventListener('mousemove', onMove)
   document.addEventListener('mouseup', onUp)
 }
 </script>
