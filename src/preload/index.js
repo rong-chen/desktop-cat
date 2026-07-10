@@ -11,6 +11,7 @@ const api = {
   openClipboard: () => ipcRenderer.send('open-clipboard'),
   openJsonViewer: () => ipcRenderer.send('open-json-viewer'),
   openTasks: () => ipcRenderer.send('open-tasks'),
+  startScreenshot: () => ipcRenderer.send('start-screenshot'),
   closeNotify: () => ipcRenderer.send('close-notify'),
   getClipboardHistory: () => ipcRenderer.invoke('get-clipboard-history'),
   clearClipboardHistory: () => ipcRenderer.invoke('clear-clipboard-history'),
@@ -35,7 +36,14 @@ const api = {
   offChatStream: () => {
     ipcRenderer.removeAllListeners('chat-stream-chunk')
     ipcRenderer.removeAllListeners('chat-stream-done')
-  }
+  },
+  screenshotCancel: () => ipcRenderer.send('screenshot-cancel'),
+  screenshotShow: () => ipcRenderer.send('screenshot-show'),
+  screenshotCapture: (dataUrl) => ipcRenderer.invoke('screenshot-capture', dataUrl),
+  screenshotSave: (dataUrl) => ipcRenderer.invoke('screenshot-save', dataUrl),
+  screenshotPin: (dataUrl, rect) => ipcRenderer.invoke('screenshot-pin', dataUrl, rect),
+  onScreenshotStart: (cb) => ipcRenderer.on('screenshot-start', () => cb()),
+  onScreenshotData: (cb) => ipcRenderer.on('screenshot-data', (_, data) => cb(data))
 }
 
 if (process.contextIsolated) {

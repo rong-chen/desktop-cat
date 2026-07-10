@@ -4,10 +4,43 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fed6c9b4-23aa-4f07-a92e-522162ca7da9" name="更改" comment="优化">
+    <list default="true" id="fed6c9b4-23aa-4f07-a92e-522162ca7da9" name="更改" comment="init">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/electron.vite.config.mjs" beforeDir="false" afterPath="$PROJECT_DIR$/electron.vite.config.mjs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/Tasks.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/src/Tasks.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preload/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/preload/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/chat.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/clipboard.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/index.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/json-viewer.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/notify.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/settings.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/App.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/Chat.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/Clipboard.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/JsonViewer.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/Notify.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/Settings.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/Tasks.vue" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/failed.gif" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/idle.gif" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/jumping.gif" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/review.gif" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/running-left.gif" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/running-right.gif" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/running.gif" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/waiting.gif" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/waving.gif" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/chat.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/clipboard.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/json-viewer.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/main.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/notify.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/settings.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/src/tasks.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/tasks.html" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -18,14 +51,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {}
-}]]></component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {}
+}</component>
   <component name="GithubPullRequestsUISettings"><![CDATA[{
   "selectedUrlAndAccountId": {
     "url": "https://github.com/rong-chen/desktop-cat.git",
-    "accountId": "acb4790b-31bf-43cb-b003-9d09b41ae46f"
+    "accountId": "1cf5ceeb-5dec-4eb8-8612-66fc6cfc90e4"
   }
+}]]></component>
+  <component name="KubernetesApiPersistence"><![CDATA[{}]]></component>
+  <component name="KubernetesApiProvider"><![CDATA[{
+  "isMigrated": true
 }]]></component>
   <component name="PackageJsonUpdateNotifier">
     <dismissed value="$PROJECT_DIR$/package.json" />
@@ -38,28 +75,28 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.GoLinterPluginOnboarding&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.GoLinterPluginStorageMigration&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.modules.go.list.on.any.changes.was.set&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
-    &quot;go.sdk.automatically.set&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/14163/Desktop/desktop-cat&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;/Applications/GoLand.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.GoLinterPluginOnboarding": "true",
+    "RunOnceActivity.GoLinterPluginStorageMigration": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.go.formatter.settings.were.checked": "true",
+    "RunOnceActivity.go.migrated.go.modules.settings": "true",
+    "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
+    "git-widget-placeholder": "master",
+    "go.import.settings.migrated": "true",
+    "go.sdk.automatically.set": "true",
+    "last_opened_file_path": "/Users/rong.chen",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "ts.external.directory.path": "/Applications/GoLand.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/resources/gifs" />
@@ -68,8 +105,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-gosdk-d297c17c1fbd-57c114c3cede-org.jetbrains.plugins.go.sharedIndexes.bundled-GO-243.26053.20" />
-        <option value="bundled-js-predefined-d6986cc7102b-1632447f56bf-JavaScript-GO-243.26053.20" />
+        <option value="bundled-gosdk-3b128438d3f6-07d2d2d66b1e-org.jetbrains.plugins.go.sharedIndexes.bundled-GO-251.29188.35" />
+        <option value="bundled-js-predefined-d6986cc7102b-09060db00ec0-JavaScript-GO-251.29188.35" />
       </set>
     </attachedChunks>
   </component>
@@ -94,6 +131,17 @@
     <option featureType="dependencySupport" implementationName="javascript:npm:vite" />
     <option featureType="dependencySupport" implementationName="executable:kubectl" />
     <option featureType="dependencySupport" implementationName="javascript:npm:vue" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="优化" />
