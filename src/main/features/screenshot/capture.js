@@ -3,7 +3,7 @@
  * 使用 node-screenshots 库进行全屏截取
  */
 
-import { screen, nativeImage } from 'electron'
+import { screen, nativeImage, systemPreferences, dialog, shell } from 'electron'
 import { getChatWindow } from '../chat/window'
 import { getCatWindow } from '../cat/window'
 import { createScreenshotWindow, getScreenshotWindow, setScreenshotImage } from './window'
@@ -14,13 +14,31 @@ import {
   setChatMenuTimer
 } from '../chat/ai-service'
 
-/**
- * 开始截图流程
- * 1. 隐藏猫咪和聊天气泡（设为透明避免被截入）
- * 2. 使用 node-screenshots 库捕获全屏
- * 3. 将截图数据发送到截图窗口供用户选区裁剪
- */
+function hasScreenCapturePermission() {
+  if (process.platform !== 'darwin') return true
+  return systemPreferences.getMediaAccessStatus('screen') === 'granted'
+}
+
+async function requestScreenCapturePermission() {
+  const { response } = await dialog.showMessageBox({
+    type: 'warning',
+    title: '需要屏幕录制权限',
+    message: '截图功能需要「屏幕录制」权限，请在系统设置中授权后重试。',
+    buttons: ['打开系统设置', '取消'],
+    defaultId: 0
+  })
+  if (response === 0) {
+    shell.openExternal(
+      'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
+    )
+  }
+}
+
 export function startScreenshot() {
+  if (!hasScreenCapturePermission()) {
+    requestScreenCapturePermission()
+    return
+  }
   const chatWin = getChatWindow() // 获取聊天气泡窗口实例
   const catWin = getCatWindow() // 获取桌面猫咪窗口实例
 

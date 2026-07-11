@@ -41,7 +41,7 @@ function setupAllIpc() {
 // ======================== 应用生命周期 ========================
 
 app.whenReady().then(async () => {
-  electronApp.setAppUserModelId('com.desktop-cat')
+  electronApp.setAppUserModelId('com.yuanzhijia.miaozs')
 
   // macOS 下设置为 accessory 模式（不显示在 Dock）
   if (process.platform === 'darwin') {
