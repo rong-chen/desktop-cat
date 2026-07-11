@@ -5,8 +5,11 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   main: {
     build: {
+      lib: {
+        entry: 'src/main/index.js'
+      },
       rollupOptions: {
-        external: ['node-screenshots']
+        external: ['node-screenshots', 'onnxruntime-node', 'esearch-ocr']
       }
     }
   },
@@ -20,6 +23,7 @@ export default defineConfig({
     plugins: [vue()],
     build: {
       rollupOptions: {
+        external: ['onnxruntime-node', 'esearch-ocr', 'path', 'fs'],
         input: {
           index: resolve('src/renderer/cat/index.html'),
           chat: resolve('src/renderer/chat/index.html'),

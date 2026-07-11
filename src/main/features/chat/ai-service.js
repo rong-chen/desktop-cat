@@ -12,6 +12,16 @@ let chatHideTimer = null
 let chatMenuTimer = null
 // 随机笑话定时器
 let jokeTimer = null
+// 倒计时暂停/恢复状态
+let chatHideRemaining = 0
+let chatHideStartedAt = 0
+// 当前是否有文字在显示
+let hasActiveText = false
+// 当前是否处于暂停状态（鼠标在气泡上）
+let isPaused = false
+
+/** 获取当前是否有文字在显示 */
+export function getHasActiveText() { return hasActiveText }
 
 /** 获取隐藏定时器 */
 export function getChatHideTimer() { return chatHideTimer }
@@ -28,13 +38,53 @@ export function setChatMenuTimer(timer) { chatMenuTimer = timer }
  */
 export function scheduleChatHide(delay) {
   if (chatHideTimer) clearTimeout(chatHideTimer)
+  hasActiveText = true
+  chatHideRemaining = delay || 5000
+  chatHideStartedAt = Date.now()
+  if (isPaused) return
   chatHideTimer = setTimeout(() => {
+    chatHideTimer = null
+    chatHideRemaining = 0
+    hasActiveText = false
     const chatWin = getChatWindow()
     if (chatWin && !chatWin.isDestroyed()) {
       chatWin.hide()
-      chatWin.webContents.send('chat-update', { text: '', mode: 'menu' })
     }
-  }, delay || 5000)
+  }, chatHideRemaining)
+}
+
+/** 暂停隐藏倒计时 */
+export function pauseChatHide() {
+  isPaused = true
+  if (!chatHideTimer) return
+  clearTimeout(chatHideTimer)
+  chatHideTimer = null
+  const elapsed = Date.now() - chatHideStartedAt
+  chatHideRemaining = Math.max(0, chatHideRemaining - elapsed)
+}
+
+/** 恢复隐藏倒计时 */
+export function resumeChatHide() {
+  isPaused = false
+  if (chatHideTimer) return
+  if (chatHideRemaining <= 0) {
+    // 倒计时早已结束，直接隐藏
+    const chatWin = getChatWindow()
+    if (chatWin && !chatWin.isDestroyed()) {
+      chatWin.hide()
+    }
+    return
+  }
+  chatHideStartedAt = Date.now()
+  chatHideTimer = setTimeout(() => {
+    chatHideTimer = null
+    chatHideRemaining = 0
+    hasActiveText = false
+    const chatWin = getChatWindow()
+    if (chatWin && !chatWin.isDestroyed()) {
+      chatWin.hide()
+    }
+  }, chatHideRemaining)
 }
 
 /**
@@ -50,8 +100,8 @@ export async function sendChatGreeting() {
 
   const systemPrompt =
     config.mode === 'decompress'
-      ? '你是一只可爱的桌面猫咪，负责帮用户解压放松。用温暖、轻松、活泼的语气说一句话，可以是鼓励或讲一个小笑话。控制在30字以内。禁止使用括号标注动作或语气，如(撒娇)(害羞)等，直接说话即可。'
-      : '你是一只话唠桌面猫咪，喜欢跟主人聊天。用活泼、俏皮的语气随便说点什么，可以分享冷知识、吐槽天气。控制在40字以内。禁止使用括号标注动作或语气，如(撒娇)(害羞)等，直接说话即可。'
+      ? '你是一只可爱的桌面猫咪，负责帮用户解压放松。用温暖、轻松、活泼的语气说一句话，可以是鼓励或讲一个小笑话。控制在50字以内。禁止使用括号标注动作或语气，如(撒娇)(害羞)等，直接说话即可。'
+      : '你是一只话唠桌面猫咪，喜欢跟主人聊天。用活泼、俏皮的语气随便说点什么，可以分享冷知识、吐槽天气。控制在50字以内。禁止使用括号标注动作或语气，如(撒娇)(害羞)等，直接说话即可。'
 
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -67,7 +117,7 @@ export async function sendChatGreeting() {
  */
 export function scheduleRandomJoke() {
   if (jokeTimer) clearTimeout(jokeTimer)
-  const min = 5 * 60 * 1000
+  const min = 10 * 60 * 1000
   const max = 60 * 60 * 1000
   const delay = Math.floor(Math.random() * (max - min)) + min
   jokeTimer = setTimeout(() => {
@@ -171,7 +221,7 @@ async function streamChat(messages, config, options = {}) {
       const data = await res.json()
       const content = data.choices?.[0]?.message?.content || ''
       if (chatWin && !chatWin.isDestroyed() && content) {
-        chatWin.webContents.send('chat-update', { mode: 'chat', text: content })
+        chatWin.webContents.send('chat-update', { text: content })
         showChat()
       }
       scheduleChatHide(options.hideDelay)
@@ -205,7 +255,7 @@ async function streamChat(messages, config, options = {}) {
           if (delta) {
             fullText += delta
             if (chatWin && !chatWin.isDestroyed()) {
-              chatWin.webContents.send('chat-update', { mode: 'chat', text: fullText })
+              chatWin.webContents.send('chat-update', { text: fullText })
               if (!shown) {
                 showChat()
                 shown = true

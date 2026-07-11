@@ -3,11 +3,13 @@
  * 全屏透明窗口，用于绘制截图选区和标注编辑
  */
 
-import { BrowserWindow, screen } from 'electron'
+import { BrowserWindow, screen, globalShortcut } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { join } from 'path'
 import { getPreloadPath } from '../../shared/window-utils'
 import { getChatWindow } from '../chat/window'
+import { getCatWindow } from '../cat/window'
+import { getHasActiveText, scheduleChatHide } from '../chat/ai-service'
 
 let screenshotWindow = null
 let screenshotImage = null
@@ -36,8 +38,8 @@ export function createScreenshotWindow() {
     webPreferences: {
       preload: getPreloadPath(),
       sandbox: false,
-      nodeIntegration: false,
-      contextIsolation: true
+      nodeIntegration: true,
+      contextIsolation: false
     }
   })
 
@@ -49,10 +51,14 @@ export function createScreenshotWindow() {
     screenshotWindow.loadFile(join(__dirname, '../renderer/screenshot/index.html'))
   }
 
-  // 窗口关闭时清理资源并恢复其他窗口透明度
+  // 窗口关闭时清理资源并恢复猫咪窗口
   screenshotWindow.on('closed', () => {
+    globalShortcut.unregister('Escape')
+    globalShortcut.unregister('CommandOrControl+C')
     screenshotWindow = null
     screenshotImage = null
+    const catWin = getCatWindow()
+    if (catWin && !catWin.isDestroyed()) catWin.setOpacity(1)
     const chatWin = getChatWindow()
     if (chatWin && !chatWin.isDestroyed()) chatWin.setOpacity(1)
   })

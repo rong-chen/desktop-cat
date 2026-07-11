@@ -13,11 +13,15 @@ import {
   getChatMenuTimer,
   setChatMenuTimer,
   getChatHideTimer,
-  setChatHideTimer
+  setChatHideTimer,
+  pauseChatHide,
+  resumeChatHide
 } from './ai-service'
 
 /** 注册聊天相关 IPC 处理器 */
 export function setupChatIpc() {
+  let lastChatHeight = 0
+
   // 切换聊天气泡显示模式（menu: 显示菜单 / 其他: 延迟隐藏）
   ipcMain.on('set-chat-mode', (_, mode) => {
     const chatWin = getChatWindow()
@@ -25,32 +29,63 @@ export function setupChatIpc() {
     if (getIsDragging()) return
 
     if (mode === 'menu') {
-      // 清除隐藏定时器，显示菜单模式
       const menuTimer = getChatMenuTimer()
       if (menuTimer) {
         clearTimeout(menuTimer)
         setChatMenuTimer(null)
       }
-      const hideTimer = getChatHideTimer()
-      if (hideTimer) {
-        clearTimeout(hideTimer)
-        setChatHideTimer(null)
-      }
       const pos = calcChatPosition()
       chatWin.setPosition(pos.x, pos.y)
-      chatWin.webContents.send('chat-update', { placement: pos.placement, mode: 'menu' })
+      chatWin.webContents.send('chat-update', { placement: pos.placement })
       chatWin.showInactive()
     } else {
-      // 非菜单模式，延迟 500ms 后隐藏
+      // 鼠标离开猫咪，如果正在倒计时中则让倒计时自己处理
+      if (getChatHideTimer()) return
       const oldTimer = getChatMenuTimer()
       if (oldTimer) clearTimeout(oldTimer)
       const timer = setTimeout(() => {
         const win = getChatWindow()
         if (!win || win.isDestroyed()) return
         win.hide()
-        win.webContents.send('chat-update', { mode: 'menu' })
       }, 500)
       setChatMenuTimer(timer)
+    }
+  })
+
+  // 暂停聊天气泡隐藏倒计时
+  ipcMain.on('pause-chat-hide', () => {
+    pauseChatHide()
+  })
+
+  // 恢复聊天气泡隐藏倒计时
+  ipcMain.on('resume-chat-hide', () => {
+    resumeChatHide()
+  })
+
+  // 前端请求隐藏聊天窗口（无文字且鼠标移出）
+  ipcMain.on('hide-chat-window', () => {
+    const chatWin = getChatWindow()
+    if (chatWin && !chatWin.isDestroyed()) {
+      chatWin.hide()
+    }
+  })
+
+  // 前端通知气泡内容高度变化，动态调整窗口大小
+  ipcMain.on('resize-chat-window', (_, contentHeight) => {
+    const chatWin = getChatWindow()
+    if (!chatWin || chatWin.isDestroyed()) return
+    const padding = 8
+    const newH = contentHeight + padding
+    if (newH === lastChatHeight) return
+    const oldH = lastChatHeight
+    lastChatHeight = newH
+    const [w] = chatWin.getSize()
+    chatWin.setSize(w, newH)
+    // 保持底部位置不变，向上扩展
+    const [x, y] = chatWin.getPosition()
+    const dy = oldH - newH
+    if (dy !== 0 && oldH > 0) {
+      chatWin.setPosition(x, y + dy)
     }
   })
 

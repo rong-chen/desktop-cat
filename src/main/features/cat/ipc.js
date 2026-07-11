@@ -8,7 +8,7 @@ import { getCatWindow } from './window'
 import { getChatWindow, hideChat, calcChatPosition, syncChatPosition } from '../chat/window'
 import { openSettingsWindow } from '../settings/window'
 import { openClipboardWindow } from '../clipboard/window'
-import { openJsonViewerWindow } from '../json-viewer/window'
+import { openJsonViewerWindow, registerJsonViewerIpc } from '../json-viewer/window'
 import { openTasksWindow } from '../tasks/window'
 import { startScreenshot } from '../screenshot/capture'
 
@@ -53,7 +53,7 @@ export function setupCatIpc() {
     }, 16)
   })
 
-  // 结束拖拽：停止轮询，更新聊天气泡位置并显示菜单
+  // 结束拖拽：停止轮询，更新聊天气泡位置
   ipcMain.on('drag-end', () => {
     isDragging = false
     if (dragPollTimer) {
@@ -64,8 +64,7 @@ export function setupCatIpc() {
     if (chatWin && !chatWin.isDestroyed()) {
       const pos = calcChatPosition()
       chatWin.setPosition(pos.x, pos.y)
-      chatWin.webContents.send('chat-update', { placement: pos.placement, mode: 'menu' })
-      chatWin.showInactive()
+      chatWin.webContents.send('chat-update', { placement: pos.placement })
     }
   })
 
@@ -93,4 +92,6 @@ export function setupCatIpc() {
   ipcMain.on('open-json-viewer', () => openJsonViewerWindow())
   ipcMain.on('open-tasks', () => openTasksWindow())
   ipcMain.on('start-screenshot', () => startScreenshot())
+
+  registerJsonViewerIpc()
 }

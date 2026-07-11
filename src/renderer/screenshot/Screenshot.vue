@@ -5,9 +5,9 @@
 
     <!-- Selection overlay (phase 1) -->
     <canvas
+      v-show="!showEditor"
       ref="overlayCanvas"
       class="layer sel-layer"
-      v-show="!showEditor"
       @mousemove="onMouseMove"
       @mousedown.prevent="onMouseDown"
       @mouseup="onMouseUp"
@@ -21,7 +21,12 @@
     <div v-show="showEditor" class="mask-right" :style="maskRightStyle"></div>
 
     <!-- Fabric editor container -->
-    <div v-show="showEditor" class="fabric-wrap" :style="fabricWrapStyle" @contextmenu.prevent="onRightClick">
+    <div
+      v-show="showEditor"
+      class="fabric-wrap"
+      :style="fabricWrapStyle"
+      @contextmenu.prevent="onRightClick"
+    >
       <canvas ref="fabricEl"></canvas>
     </div>
 
@@ -41,45 +46,133 @@
     </div>
 
     <!-- Toolbar -->
-    <div v-show="showEditor" class="toolbar" :style="toolbarStyle" @mousedown.stop>
+    <div ref="toolbarEl" v-show="showEditor" class="toolbar" :style="toolbarStyle" @mousedown.stop>
       <div class="tg">
-        <button v-for="t in toolList" :key="t.id" :class="{ active: activeTool === t.id }" @click="setTool(t.id)" @mouseenter="tooltip = t.title" @mouseleave="tooltip = ''" v-html="t.icon"></button>
+        <button
+          v-for="t in toolList"
+          :key="t.id"
+          :class="{ active: activeTool === t.id }"
+          @click="setTool(t.id)"
+          @mouseenter="tooltip = t.title"
+          @mouseleave="tooltip = ''"
+          v-html="t.icon"
+        ></button>
       </div>
       <i class="sep"></i>
       <div class="tg">
-        <button v-for="c in palette" :key="c" class="cbtn" :class="{ active: activeColor === c }" :style="{ background: c }" @click="activeColor = c"></button>
+        <button
+          v-for="c in palette"
+          :key="c"
+          class="cbtn"
+          :class="{ active: activeColor === c }"
+          :style="{ background: c }"
+          @click="activeColor = c"
+        ></button>
       </div>
       <i class="sep"></i>
       <div class="tg">
-        <button v-for="s in [2,4,6]" :key="s" :class="{ active: activeWidth === s }" @click="activeWidth = s" @mouseenter="tooltip = s === 2 ? '细' : s === 4 ? '中' : '粗'" @mouseleave="tooltip = ''">
-          <span class="dot" :style="{ width: s*2+'px', height: s*2+'px' }"></span>
+        <button
+          v-for="s in [2, 4, 6]"
+          :key="s"
+          :class="{ active: activeWidth === s }"
+          @click="activeWidth = s"
+          @mouseenter="tooltip = s === 2 ? '细' : s === 4 ? '中' : '粗'"
+          @mouseleave="tooltip = ''"
+        >
+          <span class="dot" :style="{ width: s * 2 + 'px', height: s * 2 + 'px' }"></span>
         </button>
       </div>
       <i class="sep"></i>
       <div class="tg">
-        <button @click="undo" @mouseenter="tooltip = '撤销 Ctrl+Z'" @mouseleave="tooltip = ''">↩</button>
-        <button @click="redo" @mouseenter="tooltip = '重做 Ctrl+Y'" @mouseleave="tooltip = ''">↪</button>
+        <button @click="undo" @mouseenter="tooltip = '撤销 Ctrl+Z'" @mouseleave="tooltip = ''">
+          ↩
+        </button>
+        <button @click="redo" @mouseenter="tooltip = '重做 Ctrl+Y'" @mouseleave="tooltip = ''">
+          ↪
+        </button>
       </div>
       <i class="sep"></i>
       <div class="tg acts">
-        <button class="pin" @click="doPin" @mouseenter="tooltip = '贴图 Ctrl+T'" @mouseleave="tooltip = ''">📌</button>
-        <button class="ok" @click="doCopy" @mouseenter="tooltip = '复制 Enter'" @mouseleave="tooltip = ''">✓</button>
-        <button @click="doSave" @mouseenter="tooltip = '保存 Ctrl+S'" @mouseleave="tooltip = ''">⤓</button>
-        <button class="no" @click="doClose" @mouseenter="tooltip = '关闭 Esc'" @mouseleave="tooltip = ''">✕</button>
+        <button
+          :disabled="ocrLoading"
+          @click="doOcr"
+          @mouseenter="tooltip = '提取文字'"
+          @mouseleave="tooltip = ''"
+        >
+          T
+        </button>
+        <button
+          :disabled="ocrLoading"
+          @click="doTranslate"
+          @mouseenter="tooltip = '翻译'"
+          @mouseleave="tooltip = ''"
+        >
+          译
+        </button>
+        <button
+          class="pin"
+          @click="doPin"
+          @mouseenter="tooltip = '贴图 Ctrl+T'"
+          @mouseleave="tooltip = ''"
+        >
+          📌
+        </button>
+        <button
+          class="ok"
+          @click="doCopy"
+          @mouseenter="tooltip = '复制 Enter'"
+          @mouseleave="tooltip = ''"
+        >
+          ✓
+        </button>
+        <button @click="doSave" @mouseenter="tooltip = '保存 Ctrl+S'" @mouseleave="tooltip = ''">
+          ⤓
+        </button>
+        <button
+          class="no"
+          @click="doClose"
+          @mouseenter="tooltip = '关闭 Esc'"
+          @mouseleave="tooltip = ''"
+        >
+          ✕
+        </button>
       </div>
       <div v-show="tooltip" class="custom-tooltip">{{ tooltip }}</div>
+    </div>
+
+    <!-- OCR / 翻译结果面板 -->
+    <div v-show="ocrResult" class="ocr-panel" :style="ocrPanelStyle" @mousedown.stop>
+      <div class="ocr-header">
+        <span>{{ ocrTitle }}</span>
+        <button @click="copyOcrResult">{{ copyBtnText }}</button>
+        <button @click="doClose">✕</button>
+      </div>
+      <div class="ocr-content" @copy.stop>{{ ocrResult }}</div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { Canvas, Rect, Ellipse, Line, Polyline, IText, Circle, PencilBrush, SprayBrush, FabricImage } from 'fabric'
+import {
+  Canvas,
+  Rect,
+  Ellipse,
+  Line,
+  Polyline,
+  IText,
+  Circle,
+  PencilBrush,
+  SprayBrush,
+  FabricImage
+} from 'fabric'
 
 const bgCanvas = ref(null)
 const overlayCanvas = ref(null)
 const fabricEl = ref(null)
 const magCanvas = ref(null)
+const toolbarEl = ref(null)
+const toolbarW = ref(0)
 
 let bgCtx = null
 let ovCtx = null
@@ -104,18 +197,66 @@ let isLoadingState = false
 
 const palette = ['#ff0000', '#ff8800', '#ffee00', '#00cc44', '#0088ff', '#ffffff', '#000000']
 const toolList = [
-  { id: 'select', title: '选择/移动', icon: '<svg viewBox="0 0 20 20"><path d="M4 2l12 8-5 1.5L9 17l-1.5-5L2 14z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>' },
-  { id: 'rect', title: '矩形', icon: '<svg viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>' },
-  { id: 'ellipse', title: '椭圆', icon: '<svg viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>' },
-  { id: 'arrow', title: '箭头', icon: '<svg viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="currentColor" stroke-width="1.8"/><polyline points="9,3 17,3 17,11" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>' },
-  { id: 'line', title: '直线', icon: '<svg viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="currentColor" stroke-width="1.8"/></svg>' },
-  { id: 'brush', title: '画笔', icon: '<svg viewBox="0 0 20 20"><path d="M3 14.5l9.5-9.5 3 3-9.5 9.5H3v-3z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>' },
-  { id: 'eraser', title: '橡皮擦', icon: '<svg viewBox="0 0 20 20"><path d="M7 17h10M3 14l8-8 4 4-6 6H4l-1-1v-1z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>' },
-  { id: 'spray', title: '喷刷', icon: '<svg viewBox="0 0 20 20"><circle cx="6" cy="8" r="1" fill="currentColor"/><circle cx="10" cy="5" r="1" fill="currentColor"/><circle cx="14" cy="7" r="1" fill="currentColor"/><circle cx="8" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="11" r="1" fill="currentColor"/><circle cx="5" cy="15" r="1" fill="currentColor"/><circle cx="10" cy="16" r="1" fill="currentColor"/><circle cx="15" cy="14" r="1" fill="currentColor"/></svg>' },
-  { id: 'mosaic', title: '马赛克', icon: '<svg viewBox="0 0 20 20"><rect x="2" y="2" width="7" height="7" fill="currentColor"/><rect x="11" y="11" width="7" height="7" fill="currentColor"/><rect x="2" y="11" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="11" y="2" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>' },
-  { id: 'blur', title: '模糊', icon: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2 2"/></svg>' },
-  { id: 'text', title: '文本', icon: '<svg viewBox="0 0 20 20"><text x="4" y="16" font-size="15" font-weight="bold" fill="currentColor">A</text></svg>' },
-  { id: 'number', title: '序号', icon: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="1.8"/><text x="7" y="14" font-size="11" font-weight="bold" fill="currentColor">1</text></svg>' }
+  {
+    id: 'select',
+    title: '选择/移动',
+    icon: '<svg viewBox="0 0 20 20"><path d="M4 2l12 8-5 1.5L9 17l-1.5-5L2 14z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>'
+  },
+  {
+    id: 'rect',
+    title: '矩形',
+    icon: '<svg viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>'
+  },
+  {
+    id: 'ellipse',
+    title: '椭圆',
+    icon: '<svg viewBox="0 0 20 20"><ellipse cx="10" cy="10" rx="8" ry="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>'
+  },
+  {
+    id: 'arrow',
+    title: '箭头',
+    icon: '<svg viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="currentColor" stroke-width="1.8"/><polyline points="9,3 17,3 17,11" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>'
+  },
+  {
+    id: 'line',
+    title: '直线',
+    icon: '<svg viewBox="0 0 20 20"><line x1="3" y1="17" x2="17" y2="3" stroke="currentColor" stroke-width="1.8"/></svg>'
+  },
+  {
+    id: 'brush',
+    title: '画笔',
+    icon: '<svg viewBox="0 0 20 20"><path d="M3 14.5l9.5-9.5 3 3-9.5 9.5H3v-3z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>'
+  },
+  {
+    id: 'eraser',
+    title: '橡皮擦',
+    icon: '<svg viewBox="0 0 20 20"><path d="M7 17h10M3 14l8-8 4 4-6 6H4l-1-1v-1z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>'
+  },
+  {
+    id: 'spray',
+    title: '喷刷',
+    icon: '<svg viewBox="0 0 20 20"><circle cx="6" cy="8" r="1" fill="currentColor"/><circle cx="10" cy="5" r="1" fill="currentColor"/><circle cx="14" cy="7" r="1" fill="currentColor"/><circle cx="8" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="11" r="1" fill="currentColor"/><circle cx="5" cy="15" r="1" fill="currentColor"/><circle cx="10" cy="16" r="1" fill="currentColor"/><circle cx="15" cy="14" r="1" fill="currentColor"/></svg>'
+  },
+  {
+    id: 'mosaic',
+    title: '马赛克',
+    icon: '<svg viewBox="0 0 20 20"><rect x="2" y="2" width="7" height="7" fill="currentColor"/><rect x="11" y="11" width="7" height="7" fill="currentColor"/><rect x="2" y="11" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="11" y="2" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>'
+  },
+  {
+    id: 'blur',
+    title: '模糊',
+    icon: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2 2"/></svg>'
+  },
+  {
+    id: 'text',
+    title: '文本',
+    icon: '<svg viewBox="0 0 20 20"><text x="4" y="16" font-size="15" font-weight="bold" fill="currentColor">A</text></svg>'
+  },
+  {
+    id: 'number',
+    title: '序号',
+    icon: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="1.8"/><text x="7" y="14" font-size="11" font-weight="bold" fill="currentColor">1</text></svg>'
+  }
 ]
 
 // --- Computed ---
@@ -139,13 +280,34 @@ const fabricWrapStyle = computed(() => ({
 }))
 
 // Mask styles (dark overlay around selection in editor mode)
-const maskTopStyle = computed(() => ({ left: 0, top: 0, width: '100%', height: selRect.value.y + 'px' }))
-const maskBottomStyle = computed(() => ({ left: '0', top: (selRect.value.y + selRect.value.h) + 'px', width: '100%', height: (screenH - selRect.value.y - selRect.value.h) + 'px' }))
-const maskLeftStyle = computed(() => ({ left: '0', top: selRect.value.y + 'px', width: selRect.value.x + 'px', height: selRect.value.h + 'px' }))
-const maskRightStyle = computed(() => ({ left: (selRect.value.x + selRect.value.w) + 'px', top: selRect.value.y + 'px', width: (screenW - selRect.value.x - selRect.value.w) + 'px', height: selRect.value.h + 'px' }))
+const maskTopStyle = computed(() => ({
+  left: 0,
+  top: 0,
+  width: '100%',
+  height: selRect.value.y + 'px'
+}))
+const maskBottomStyle = computed(() => ({
+  left: '0',
+  top: selRect.value.y + selRect.value.h + 'px',
+  width: '100%',
+  height: screenH - selRect.value.y - selRect.value.h + 'px'
+}))
+const maskLeftStyle = computed(() => ({
+  left: '0',
+  top: selRect.value.y + 'px',
+  width: selRect.value.x + 'px',
+  height: selRect.value.h + 'px'
+}))
+const maskRightStyle = computed(() => ({
+  left: selRect.value.x + selRect.value.w + 'px',
+  top: selRect.value.y + 'px',
+  width: screenW - selRect.value.x - selRect.value.w + 'px',
+  height: selRect.value.h + 'px'
+}))
 
 const magnifierStyle = computed(() => {
-  let x = mousePos.x + 20, y = mousePos.y + 20
+  let x = mousePos.x + 20,
+    y = mousePos.y + 20
   if (x + 150 > screenW) x = mousePos.x - 170
   if (y + 190 > screenH) y = mousePos.y - 210
   return { left: x + 'px', top: y + 'px' }
@@ -158,17 +320,26 @@ const sizeLabelStyle = computed(() => ({
 
 const toolbarStyle = computed(() => {
   const r = selRect.value
+  const tw = toolbarW.value
+
   let top = r.y + r.h + 8
   if (top + 40 > screenH) top = r.y - 48
   if (top < 0) top = r.y + r.h - 48
-  return { left: r.x + 'px', top: top + 'px' }
+
+  let left = r.x
+  if (tw > 0 && left + tw > screenW) left = screenW - tw - 4
+  if (left < 4) left = 4
+
+  return { left: left + 'px', top: top + 'px' }
 })
 
 const colorText = computed(() => {
   const c = currentColor.value
   if (!c || c.length < 7) return c
   if (colorFormat.value === 'hex') return c.toUpperCase()
-  const r = parseInt(c.slice(1, 3), 16), g = parseInt(c.slice(3, 5), 16), b = parseInt(c.slice(5, 7), 16)
+  const r = parseInt(c.slice(1, 3), 16),
+    g = parseInt(c.slice(3, 5), 16),
+    b = parseInt(c.slice(5, 7), 16)
   return `rgb(${r}, ${g}, ${b})`
 })
 
@@ -178,14 +349,15 @@ function getPixelColor(x, y) {
   const px = Math.min(Math.max(0, Math.round(x * scaleFactor)), bgCanvas.value.width - 1)
   const py = Math.min(Math.max(0, Math.round(y * scaleFactor)), bgCanvas.value.height - 1)
   const d = bgCtx.getImageData(px, py, 1, 1).data
-  return '#' + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, '0')).join('')
+  return '#' + [d[0], d[1], d[2]].map((v) => v.toString(16).padStart(2, '0')).join('')
 }
 
 function updateMagnifier(x, y) {
   const mag = magCanvas.value
   if (!mag || !bgCtx) return
   const ctx = mag.getContext('2d')
-  const grid = 11, ps = Math.floor(130 / grid)
+  const grid = 11,
+    ps = Math.floor(130 / grid)
   ctx.clearRect(0, 0, 130, 130)
   for (let gy = 0; gy < grid; gy++) {
     for (let gx = 0; gx < grid; gx++) {
@@ -198,27 +370,33 @@ function updateMagnifier(x, y) {
       ctx.fillRect(gx * ps, gy * ps, ps, ps)
     }
   }
-  ctx.strokeStyle = '#ff0000'; ctx.lineWidth = 2
+  ctx.strokeStyle = '#ff0000'
+  ctx.lineWidth = 2
   ctx.strokeRect(5 * ps, 5 * ps, ps, ps)
 }
 
 // --- Overlay drawing ---
 function drawOverlay() {
   if (!ovCtx) return
-  const w = overlayCanvas.value.width, h = overlayCanvas.value.height
+  const w = overlayCanvas.value.width,
+    h = overlayCanvas.value.height
   ovCtx.clearRect(0, 0, w, h)
   ovCtx.fillStyle = 'rgba(0,0,0,0.45)'
   ovCtx.fillRect(0, 0, w, h)
   if (phase.value === 'idle') return
   const r = selRect.value
   ovCtx.clearRect(r.x * scaleFactor, r.y * scaleFactor, r.w * scaleFactor, r.h * scaleFactor)
-  ovCtx.strokeStyle = '#0088ff'; ovCtx.lineWidth = 1.5
+  ovCtx.strokeStyle = '#0088ff'
+  ovCtx.lineWidth = 1.5
   ovCtx.strokeRect(r.x * scaleFactor, r.y * scaleFactor, r.w * scaleFactor, r.h * scaleFactor)
 }
 
 // --- Fabric.js ---
 function initFabric() {
-  if (fabricCanvas) { fabricCanvas.dispose(); fabricCanvas = null }
+  if (fabricCanvas) {
+    fabricCanvas.dispose()
+    fabricCanvas = null
+  }
   const r = selRect.value
   if (r.w < 2 || r.h < 2) return
 
@@ -231,9 +409,20 @@ function initFabric() {
     })
 
     const tmpCanvas = document.createElement('canvas')
-    tmpCanvas.width = r.w * scaleFactor; tmpCanvas.height = r.h * scaleFactor
+    tmpCanvas.width = r.w * scaleFactor
+    tmpCanvas.height = r.h * scaleFactor
     const tc = tmpCanvas.getContext('2d')
-    tc.drawImage(bgCanvas.value, r.x * scaleFactor, r.y * scaleFactor, r.w * scaleFactor, r.h * scaleFactor, 0, 0, tmpCanvas.width, tmpCanvas.height)
+    tc.drawImage(
+      bgCanvas.value,
+      r.x * scaleFactor,
+      r.y * scaleFactor,
+      r.w * scaleFactor,
+      r.h * scaleFactor,
+      0,
+      0,
+      tmpCanvas.width,
+      tmpCanvas.height
+    )
 
     const bgImg = new Image()
     bgImg.onload = () => {
@@ -247,6 +436,7 @@ function initFabric() {
 
     fabricCanvas.on('object:added', saveState)
     fabricCanvas.on('object:modified', saveState)
+    fabricCanvas.on('path:created', onPathCreated)
     setupFabricTool()
   })
 }
@@ -287,7 +477,7 @@ function setTool(id) {
 
 function setupFabricTool() {
   if (!fabricCanvas) return
-  const isDrawMode = ['brush', 'eraser', 'spray'].includes(activeTool.value)
+  const isDrawMode = ['brush', 'eraser', 'spray', 'mosaic', 'blur'].includes(activeTool.value)
   fabricCanvas.isDrawingMode = isDrawMode
   fabricCanvas.selection = activeTool.value === 'select'
 
@@ -307,6 +497,11 @@ function setupFabricTool() {
     brush.width = activeWidth.value * 6
     brush.density = 20
     fabricCanvas.freeDrawingBrush = brush
+  } else if (activeTool.value === 'mosaic' || activeTool.value === 'blur') {
+    const brush = new PencilBrush(fabricCanvas)
+    brush.color = 'rgba(255,255,0,0.3)'
+    brush.width = 20
+    fabricCanvas.freeDrawingBrush = brush
   }
 
   fabricCanvas.defaultCursor = activeTool.value === 'select' ? 'default' : 'crosshair'
@@ -323,7 +518,7 @@ function setupFabricTool() {
   fabricCanvas.off('mouse:up', onFabricUp)
   fabricCanvas.off('mouse:down', onFabricTextClick)
 
-  if (['rect', 'ellipse', 'arrow', 'line', 'mosaic', 'blur', 'number'].includes(activeTool.value)) {
+  if (['rect', 'ellipse', 'arrow', 'line', 'number'].includes(activeTool.value)) {
     fabricCanvas.on('mouse:down', onFabricDown)
     fabricCanvas.on('mouse:move', onFabricMove)
     fabricCanvas.on('mouse:up', onFabricUp)
@@ -344,8 +539,26 @@ function onFabricDown(opt) {
   phase.value = 'annotating'
 
   if (activeTool.value === 'number') {
-    const circle = new Circle({ left: p.x, top: p.y, radius: 12, fill: activeColor.value, originX: 'center', originY: 'center', selectable: true })
-    const text = new IText(String(numberCounter++), { left: p.x, top: p.y, fontSize: 14, fill: '#ffffff', fontWeight: 'bold', originX: 'center', originY: 'center', selectable: false, editable: false })
+    const circle = new Circle({
+      left: p.x,
+      top: p.y,
+      radius: 12,
+      fill: activeColor.value,
+      originX: 'center',
+      originY: 'center',
+      selectable: true
+    })
+    const text = new IText(String(numberCounter++), {
+      left: p.x,
+      top: p.y,
+      fontSize: 14,
+      fill: '#ffffff',
+      fontWeight: 'bold',
+      originX: 'center',
+      originY: 'center',
+      selectable: false,
+      editable: false
+    })
     fabricCanvas.add(circle, text)
     fabricCanvas.renderAll()
     drawStart = null
@@ -353,15 +566,36 @@ function onFabricDown(opt) {
   }
 
   if (activeTool.value === 'rect') {
-    drawObj = new Rect({ left: p.x, top: p.y, width: 0, height: 0, fill: 'transparent', stroke: activeColor.value, strokeWidth: activeWidth.value })
+    drawObj = new Rect({
+      left: p.x,
+      top: p.y,
+      width: 0,
+      height: 0,
+      fill: 'transparent',
+      stroke: activeColor.value,
+      strokeWidth: activeWidth.value
+    })
   } else if (activeTool.value === 'ellipse') {
-    drawObj = new Ellipse({ left: p.x, top: p.y, rx: 0, ry: 0, fill: 'transparent', stroke: activeColor.value, strokeWidth: activeWidth.value })
+    drawObj = new Ellipse({
+      left: p.x,
+      top: p.y,
+      rx: 0,
+      ry: 0,
+      fill: 'transparent',
+      stroke: activeColor.value,
+      strokeWidth: activeWidth.value
+    })
   } else if (activeTool.value === 'line') {
-    drawObj = new Line([p.x, p.y, p.x, p.y], { stroke: activeColor.value, strokeWidth: activeWidth.value })
+    drawObj = new Line([p.x, p.y, p.x, p.y], {
+      stroke: activeColor.value,
+      strokeWidth: activeWidth.value
+    })
   } else if (activeTool.value === 'arrow') {
-    drawObj = new Line([p.x, p.y, p.x, p.y], { stroke: activeColor.value, strokeWidth: activeWidth.value, _isArrow: true })
-  } else if (activeTool.value === 'mosaic' || activeTool.value === 'blur') {
-    drawObj = new Rect({ left: p.x, top: p.y, width: 0, height: 0, fill: 'transparent', stroke: '#888', strokeWidth: 1, strokeDashArray: [4, 4], _isMosaic: activeTool.value === 'mosaic', _isBlur: activeTool.value === 'blur' })
+    drawObj = new Line([p.x, p.y, p.x, p.y], {
+      stroke: activeColor.value,
+      strokeWidth: activeWidth.value,
+      _isArrow: true
+    })
   }
   if (drawObj) fabricCanvas.add(drawObj)
 }
@@ -369,12 +603,23 @@ function onFabricDown(opt) {
 function onFabricMove(opt) {
   if (!drawStart || !drawObj) return
   const p = opt.scenePoint || fabricCanvas.getScenePoint(opt.e)
-  const dx = p.x - drawStart.x, dy = p.y - drawStart.y
+  const dx = p.x - drawStart.x,
+    dy = p.y - drawStart.y
 
-  if (activeTool.value === 'rect' || activeTool.value === 'mosaic' || activeTool.value === 'blur') {
-    drawObj.set({ left: Math.min(drawStart.x, p.x), top: Math.min(drawStart.y, p.y), width: Math.abs(dx), height: Math.abs(dy) })
+  if (activeTool.value === 'rect') {
+    drawObj.set({
+      left: Math.min(drawStart.x, p.x),
+      top: Math.min(drawStart.y, p.y),
+      width: Math.abs(dx),
+      height: Math.abs(dy)
+    })
   } else if (activeTool.value === 'ellipse') {
-    drawObj.set({ left: Math.min(drawStart.x, p.x), top: Math.min(drawStart.y, p.y), rx: Math.abs(dx) / 2, ry: Math.abs(dy) / 2 })
+    drawObj.set({
+      left: Math.min(drawStart.x, p.x),
+      top: Math.min(drawStart.y, p.y),
+      rx: Math.abs(dx) / 2,
+      ry: Math.abs(dy) / 2
+    })
   } else if (activeTool.value === 'line' || activeTool.value === 'arrow') {
     drawObj.set({ x2: p.x, y2: p.y })
   }
@@ -383,9 +628,7 @@ function onFabricMove(opt) {
 
 function onFabricUp() {
   if (drawObj) {
-    if (drawObj._isMosaic) applyMosaic(drawObj)
-    else if (drawObj._isBlur) applyBlur(drawObj)
-    else if (drawObj._isArrow) applyArrowHead(drawObj)
+    if (drawObj._isArrow) applyArrowHead(drawObj)
   }
   drawObj = null
   drawStart = null
@@ -396,8 +639,12 @@ function onFabricTextClick(opt) {
   const p = opt.scenePoint || fabricCanvas.getScenePoint(opt.e)
   phase.value = 'annotating'
   const text = new IText('文本', {
-    left: p.x, top: p.y, fontSize: 18, fill: activeColor.value,
-    fontFamily: 'sans-serif', editable: true
+    left: p.x,
+    top: p.y,
+    fontSize: 18,
+    fill: activeColor.value,
+    fontFamily: 'sans-serif',
+    editable: true
   })
   fabricCanvas.add(text)
   fabricCanvas.setActiveObject(text)
@@ -406,16 +653,138 @@ function onFabricTextClick(opt) {
   fabricCanvas.renderAll()
 }
 
+function onPathCreated(opt) {
+  const path = opt.path
+  if (!path) return
+  if (activeTool.value === 'mosaic') {
+    applyMosaicPath(path)
+  } else if (activeTool.value === 'blur') {
+    applyBlurPath(path)
+  }
+}
+
+function applyMosaicPath(path) {
+  const bbox = path.getBoundingRect()
+  const r = selRect.value
+  const x = Math.round((bbox.left + r.x) * scaleFactor)
+  const y = Math.round((bbox.top + r.y) * scaleFactor)
+  const w = Math.round(bbox.width * scaleFactor)
+  const h = Math.round(bbox.height * scaleFactor)
+  if (w < 2 || h < 2) {
+    fabricCanvas.remove(path)
+    return
+  }
+  const bs = 8 * scaleFactor
+  const tmpC = document.createElement('canvas')
+  tmpC.width = w
+  tmpC.height = h
+  const tc = tmpC.getContext('2d')
+  tc.drawImage(bgCanvas.value, x, y, w, h, 0, 0, w, h)
+  for (let bx = 0; bx < w; bx += bs) {
+    for (let by = 0; by < h; by += bs) {
+      const px = tc.getImageData(bx, by, 1, 1).data
+      tc.fillStyle = `rgb(${px[0]},${px[1]},${px[2]})`
+      tc.fillRect(bx, by, bs, bs)
+    }
+  }
+  // 用画笔轨迹作为遮罩，只保留涂抹区域
+  const maskC = document.createElement('canvas')
+  maskC.width = w
+  maskC.height = h
+  const mc = maskC.getContext('2d')
+  mc.translate(-bbox.left * scaleFactor, -bbox.top * scaleFactor)
+  mc.scale(scaleFactor, scaleFactor)
+  mc.lineCap = 'round'
+  mc.lineJoin = 'round'
+  mc.lineWidth = path.strokeWidth || 20
+  mc.strokeStyle = '#fff'
+  const pathEl = new Path2D(path.path.map(seg => seg.join(' ')).join(' '))
+  mc.stroke(pathEl)
+
+  // 将马赛克结果按遮罩裁剪
+  tc.globalCompositeOperation = 'destination-in'
+  tc.drawImage(maskC, 0, 0)
+
+  const mosaicImg = new Image()
+  mosaicImg.onload = () => {
+    const fi = new FabricImage(mosaicImg, {
+      left: bbox.left,
+      top: bbox.top,
+      scaleX: bbox.width / w,
+      scaleY: bbox.height / h
+    })
+    fabricCanvas.remove(path)
+    fabricCanvas.add(fi)
+    fabricCanvas.renderAll()
+  }
+  mosaicImg.src = tmpC.toDataURL()
+}
+
+function applyBlurPath(path) {
+  const bbox = path.getBoundingRect()
+  const r = selRect.value
+  const x = Math.round((bbox.left + r.x) * scaleFactor)
+  const y = Math.round((bbox.top + r.y) * scaleFactor)
+  const w = Math.round(bbox.width * scaleFactor)
+  const h = Math.round(bbox.height * scaleFactor)
+  if (w < 2 || h < 2) {
+    fabricCanvas.remove(path)
+    return
+  }
+  const tmpC = document.createElement('canvas')
+  tmpC.width = w
+  tmpC.height = h
+  const tc = tmpC.getContext('2d')
+  tc.filter = 'blur(8px)'
+  tc.drawImage(bgCanvas.value, x, y, w, h, 0, 0, w, h)
+  tc.filter = 'none'
+
+  // 用画笔轨迹作为遮罩
+  const maskC = document.createElement('canvas')
+  maskC.width = w
+  maskC.height = h
+  const mc = maskC.getContext('2d')
+  mc.translate(-bbox.left * scaleFactor, -bbox.top * scaleFactor)
+  mc.scale(scaleFactor, scaleFactor)
+  mc.lineCap = 'round'
+  mc.lineJoin = 'round'
+  mc.lineWidth = path.strokeWidth || 20
+  mc.strokeStyle = '#fff'
+  const pathEl = new Path2D(path.path.map(seg => seg.join(' ')).join(' '))
+  mc.stroke(pathEl)
+
+  tc.globalCompositeOperation = 'destination-in'
+  tc.drawImage(maskC, 0, 0)
+
+  const blurImg = new Image()
+  blurImg.onload = () => {
+    const fi = new FabricImage(blurImg, {
+      left: bbox.left,
+      top: bbox.top,
+      scaleX: bbox.width / w,
+      scaleY: bbox.height / h
+    })
+    fabricCanvas.remove(path)
+    fabricCanvas.add(fi)
+    fabricCanvas.renderAll()
+  }
+  blurImg.src = tmpC.toDataURL()
+}
+
 function applyMosaic(rect) {
   const r = selRect.value
   const x = Math.round((rect.left + r.x) * scaleFactor)
   const y = Math.round((rect.top + r.y) * scaleFactor)
   const w = Math.round(rect.width * scaleFactor)
   const h = Math.round(rect.height * scaleFactor)
-  if (w < 2 || h < 2) { fabricCanvas.remove(rect); return }
+  if (w < 2 || h < 2) {
+    fabricCanvas.remove(rect)
+    return
+  }
   const bs = 8 * scaleFactor
   const tmpC = document.createElement('canvas')
-  tmpC.width = w; tmpC.height = h
+  tmpC.width = w
+  tmpC.height = h
   const tc = tmpC.getContext('2d')
   tc.drawImage(bgCanvas.value, x, y, w, h, 0, 0, w, h)
   for (let bx = 0; bx < w; bx += bs) {
@@ -427,7 +796,12 @@ function applyMosaic(rect) {
   }
   const mosaicImg = new Image()
   mosaicImg.onload = () => {
-    const fi = new FabricImage(mosaicImg, { left: rect.left, top: rect.top, scaleX: rect.width / w, scaleY: rect.height / h })
+    const fi = new FabricImage(mosaicImg, {
+      left: rect.left,
+      top: rect.top,
+      scaleX: rect.width / w,
+      scaleY: rect.height / h
+    })
     fabricCanvas.remove(rect)
     fabricCanvas.add(fi)
     fabricCanvas.renderAll()
@@ -441,15 +815,24 @@ function applyBlur(rect) {
   const y = Math.round((rect.top + r.y) * scaleFactor)
   const w = Math.round(rect.width * scaleFactor)
   const h = Math.round(rect.height * scaleFactor)
-  if (w < 2 || h < 2) { fabricCanvas.remove(rect); return }
+  if (w < 2 || h < 2) {
+    fabricCanvas.remove(rect)
+    return
+  }
   const tmpC = document.createElement('canvas')
-  tmpC.width = w; tmpC.height = h
+  tmpC.width = w
+  tmpC.height = h
   const tc = tmpC.getContext('2d')
   tc.filter = 'blur(8px)'
   tc.drawImage(bgCanvas.value, x, y, w, h, 0, 0, w, h)
   const blurImg = new Image()
   blurImg.onload = () => {
-    const fi = new FabricImage(blurImg, { left: rect.left, top: rect.top, scaleX: rect.width / w, scaleY: rect.height / h })
+    const fi = new FabricImage(blurImg, {
+      left: rect.left,
+      top: rect.top,
+      scaleX: rect.width / w,
+      scaleY: rect.height / h
+    })
     fabricCanvas.remove(rect)
     fabricCanvas.add(fi)
     fabricCanvas.renderAll()
@@ -458,11 +841,18 @@ function applyBlur(rect) {
 }
 
 function applyArrowHead(line) {
-  const x1 = line.x1, y1 = line.y1, x2 = line.x2, y2 = line.y2
+  const x1 = line.x1,
+    y1 = line.y1,
+    x2 = line.x2,
+    y2 = line.y2
   const angle = Math.atan2(y2 - y1, x2 - x1)
   const hl = 14
   const head = new Polyline(
-    [{ x: x2, y: y2 }, { x: x2 - hl * Math.cos(angle - Math.PI / 6), y: y2 - hl * Math.sin(angle - Math.PI / 6) }, { x: x2 - hl * Math.cos(angle + Math.PI / 6), y: y2 - hl * Math.sin(angle + Math.PI / 6) }],
+    [
+      { x: x2, y: y2 },
+      { x: x2 - hl * Math.cos(angle - Math.PI / 6), y: y2 - hl * Math.sin(angle - Math.PI / 6) },
+      { x: x2 - hl * Math.cos(angle + Math.PI / 6), y: y2 - hl * Math.sin(angle + Math.PI / 6) }
+    ],
     { fill: line.stroke, stroke: line.stroke, strokeWidth: 1, selectable: false, evented: false }
   )
   fabricCanvas.add(head)
@@ -471,7 +861,8 @@ function applyArrowHead(line) {
 
 // --- Selection events ---
 function onMouseMove(e) {
-  mousePos.x = e.clientX; mousePos.y = e.clientY
+  mousePos.x = e.clientX
+  mousePos.y = e.clientY
   if (showMagnifier.value) {
     currentColor.value = getPixelColor(e.clientX, e.clientY)
     updateMagnifier(e.clientX, e.clientY)
@@ -484,12 +875,17 @@ function onMouseMove(e) {
 }
 
 function onMouseDown(e) {
-  if (e.button === 2) { onRightClick(); return }
+  if (e.button === 2) {
+    onRightClick()
+    return
+  }
   if (e.button !== 0) return
   if (phase.value === 'idle') {
     phase.value = 'selecting'
-    selection.x = e.clientX; selection.y = e.clientY
-    selection.w = 0; selection.h = 0
+    selection.x = e.clientX
+    selection.y = e.clientY
+    selection.w = 0
+    selection.h = 0
   }
 }
 
@@ -497,10 +893,20 @@ function onMouseUp(e) {
   if (e.button !== 0) return
   if (phase.value === 'selecting') {
     if (Math.abs(selection.w) < 3 || Math.abs(selection.h) < 3) {
-      phase.value = 'idle'; selection.w = 0; selection.h = 0; drawOverlay(); return
+      phase.value = 'idle'
+      selection.w = 0
+      selection.h = 0
+      drawOverlay()
+      return
     }
-    if (selection.w < 0) { selection.x += selection.w; selection.w = -selection.w }
-    if (selection.h < 0) { selection.y += selection.h; selection.h = -selection.h }
+    if (selection.w < 0) {
+      selection.x += selection.w
+      selection.w = -selection.w
+    }
+    if (selection.h < 0) {
+      selection.y += selection.h
+      selection.h = -selection.h
+    }
     phase.value = 'selected'
     initFabric()
   }
@@ -508,7 +914,10 @@ function onMouseUp(e) {
 
 function onDblClick() {
   if (phase.value === 'idle') {
-    selection.x = 0; selection.y = 0; selection.w = screenW; selection.h = screenH
+    selection.x = 0
+    selection.y = 0
+    selection.w = screenW
+    selection.h = screenH
     phase.value = 'selected'
     initFabric()
   }
@@ -522,10 +931,16 @@ function onRightClick() {
     return
   }
   if (showEditor.value) {
-    phase.value = 'idle'; selection.w = 0; selection.h = 0
+    phase.value = 'idle'
+    selection.w = 0
+    selection.h = 0
     numberCounter = 1
-    if (fabricCanvas) { fabricCanvas.dispose(); fabricCanvas = null }
-    undoStack = []; redoStack = []
+    if (fabricCanvas) {
+      fabricCanvas.dispose()
+      fabricCanvas = null
+    }
+    undoStack = []
+    redoStack = []
     drawOverlay()
     return
   }
@@ -538,25 +953,169 @@ function getCompositeDataUrl() {
   return fabricCanvas.toDataURL({ format: 'png', multiplier: scaleFactor })
 }
 
-function doCopy() { window.api.screenshotCapture(getCompositeDataUrl()) }
-function doSave() { window.api.screenshotSave(getCompositeDataUrl()) }
-function doPin() { window.api.screenshotPin(getCompositeDataUrl(), selRect.value) }
-function doClose() { window.api.screenshotCancel() }
+function doCopy() {
+  window.api.screenshotCapture(getCompositeDataUrl())
+}
+function doSave() {
+  window.api.screenshotSave(getCompositeDataUrl())
+}
+function doPin() {
+  window.api.screenshotPin(getCompositeDataUrl(), selRect.value)
+}
+function doClose() {
+  window.api.screenshotCancel()
+}
+
+const ocrLoading = ref(false)
+const ocrResult = ref('')
+const ocrTitle = ref('提取文字')
+const copyBtnText = ref('复制')
+
+const ocrPanelStyle = computed(() => {
+  const r = selRect.value
+  const panelW = Math.max(300, r.w)
+  let top = r.y + r.h + 50
+  if (top + 150 > screenH) top = r.y - 160
+  if (top < 0) top = 10
+  let left = r.x
+  if (left + panelW > screenW) left = screenW - panelW - 4
+  if (left < 0) left = 4
+  return { left: left + 'px', top: top + 'px', maxWidth: panelW + 'px' }
+})
+
+async function doOcr() {
+  ocrLoading.value = true
+  ocrTitle.value = '提取文字'
+  ocrResult.value = '识别中...'
+  try {
+    const texts = await runLocalOcr()
+    ocrResult.value = texts.length > 0 ? texts.join('\n') : '未识别到文字'
+  } catch (e) {
+    ocrResult.value = '识别失败: ' + e.message
+  }
+  ocrLoading.value = false
+}
+
+async function doTranslate() {
+  ocrLoading.value = true
+  ocrTitle.value = '翻译'
+  ocrResult.value = '识别中...'
+  try {
+    const texts = await runLocalOcr()
+    if (texts.length === 0) {
+      ocrResult.value = '未识别到文字'
+      ocrLoading.value = false
+      return
+    }
+    ocrResult.value = '翻译中...'
+    const transRes = await window.api.screenshotTranslate({ texts, from: 'auto', to: 'zh' })
+    if (transRes.success) {
+      ocrResult.value = transRes.texts.join('\n')
+    } else {
+      ocrResult.value = '翻译失败: ' + transRes.error
+    }
+  } catch (e) {
+    ocrResult.value = '识别失败: ' + e.message
+  }
+  ocrLoading.value = false
+}
+
+let ocrEngineCache = null
+
+async function runLocalOcr() {
+  const path = require('path')
+  const fs = require('fs')
+
+  if (!ocrEngineCache) {
+    const ort = require('onnxruntime-node')
+    const ocr = require('esearch-ocr')
+
+    const appPath = process.resourcesPath || ''
+    const packedModelDir = path.join(appPath, 'onnx')
+    const devModelDir = path.join(process.cwd(), 'resources/onnx')
+    const modelDir = fs.existsSync(path.join(packedModelDir, 'ppocr_keys_v1.txt'))
+      ? packedModelDir
+      : devModelDir
+
+    const enDictContent = fs.readFileSync(path.join(modelDir, 'en_dict.txt'), 'utf-8')
+
+    ocrEngineCache = await ocr.init({
+      det: { input: path.join(modelDir, 'ppocr_det.onnx'), ratio: 0.5 },
+      rec: { input: path.join(modelDir, 'ppocr_rec_en.onnx'), decodeDic: enDictContent, imgh: 32, optimize: { space: false } },
+      ort,
+      ortOption: { executionProviders: [{ name: 'cpu' }] }
+    })
+  }
+
+  const dataUrl = getCompositeDataUrl()
+  const img = new Image()
+  await new Promise((resolve) => {
+    img.onload = resolve
+    img.src = dataUrl
+  })
+
+  const canvas = document.createElement('canvas')
+  canvas.width = img.width
+  canvas.height = img.height
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(img, 0, 0)
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+
+  const result = await ocrEngineCache.ocr(imageData)
+  return result.columns.flatMap((c) => c.parragraphs).map((p) => p.parse.text)
+}
+
+function copyOcrResult() {
+  if (ocrResult.value) {
+    navigator.clipboard.writeText(ocrResult.value)
+    copyBtnText.value = '已复制'
+    setTimeout(() => { copyBtnText.value = '复制' }, 1500)
+  }
+}
 
 // --- Keyboard ---
 function onKeyDown(e) {
-  if (e.key === 'Escape') { doClose(); return }
-  if (e.key === 'Enter' || ((e.ctrlKey || e.metaKey) && e.key === 'c')) {
-    if (showEditor.value) { doCopy(); return }
+  if (e.key === 'Escape') {
+    doClose()
+    return
   }
-  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (showEditor.value) doSave(); return }
-  if ((e.ctrlKey || e.metaKey) && e.key === 't') { e.preventDefault(); if (showEditor.value) doPin(); return }
-  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); return }
-  if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); redo(); return }
-  if (e.key === 'Shift' && !e.repeat) colorFormat.value = colorFormat.value === 'hex' ? 'rgb' : 'hex'
+  if (e.key === 'Enter' || ((e.ctrlKey || e.metaKey) && e.key === 'c')) {
+    if (ocrResult.value) {
+      copyOcrResult()
+      return
+    }
+    if (showEditor.value) {
+      doCopy()
+      return
+    }
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault()
+    if (showEditor.value) doSave()
+    return
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+    e.preventDefault()
+    if (showEditor.value) doPin()
+    return
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+    e.preventDefault()
+    undo()
+    return
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+    e.preventDefault()
+    redo()
+    return
+  }
+  if (e.key === 'Shift' && !e.repeat)
+    colorFormat.value = colorFormat.value === 'hex' ? 'rgb' : 'hex'
 }
 
-watch(activeTool, () => { if (fabricCanvas) setupFabricTool() })
+watch(activeTool, () => {
+  if (fabricCanvas) setupFabricTool()
+})
 watch(activeColor, (c) => {
   if (fabricCanvas && fabricCanvas.freeDrawingBrush && activeTool.value !== 'eraser')
     fabricCanvas.freeDrawingBrush.color = c
@@ -569,21 +1128,41 @@ watch(activeWidth, (w) => {
   }
 })
 
+let toolbarObserver = null
+
 onMounted(() => {
   document.addEventListener('keydown', onKeyDown)
+  toolbarObserver = new ResizeObserver((entries) => {
+    for (const entry of entries) {
+      toolbarW.value = entry.contentRect.width + 14
+    }
+  })
+  if (toolbarEl.value) toolbarObserver.observe(toolbarEl.value)
+  window.api.onScreenshotCopy(() => {
+    if (ocrResult.value) {
+      copyOcrResult()
+    } else if (showEditor.value) {
+      doCopy()
+    }
+  })
   window.api.onScreenshotData((data) => {
     scaleFactor = data.scaleFactor
-    screenW = data.width; screenH = data.height
+    screenW = data.width
+    screenH = data.height
     const img = new Image()
     img.onload = () => {
       const bg = bgCanvas.value
-      bg.width = data.width * scaleFactor; bg.height = data.height * scaleFactor
-      bg.style.width = data.width + 'px'; bg.style.height = data.height + 'px'
+      bg.width = data.width * scaleFactor
+      bg.height = data.height * scaleFactor
+      bg.style.width = data.width + 'px'
+      bg.style.height = data.height + 'px'
       bgCtx = bg.getContext('2d', { willReadFrequently: true })
       bgCtx.drawImage(img, 0, 0, bg.width, bg.height)
       const ov = overlayCanvas.value
-      ov.width = bg.width; ov.height = bg.height
-      ov.style.width = data.width + 'px'; ov.style.height = data.height + 'px'
+      ov.width = bg.width
+      ov.height = bg.height
+      ov.style.width = data.width + 'px'
+      ov.style.height = data.height + 'px'
       ovCtx = ov.getContext('2d')
       drawOverlay()
       window.api.screenshotShow() //显示
@@ -593,52 +1172,199 @@ onMounted(() => {
 })
 onUnmounted(() => {
   document.removeEventListener('keydown', onKeyDown)
+  if (toolbarObserver) toolbarObserver.disconnect()
   if (fabricCanvas) fabricCanvas.dispose()
 })
 </script>
 
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body, #app { width: 100%; height: 100%; overflow: hidden; background: transparent; }
-
-.screenshot-root { position: relative; width: 100%; height: 100%; cursor: crosshair; user-select: none; }
-.layer { position: absolute; top: 0; left: 0; }
-.sel-layer { z-index: 2; cursor: crosshair; }
-
-.fabric-wrap { position: absolute; z-index: 10; outline: 1.5px solid #0088ff; outline-offset: 0px; overflow: visible; }
-.fabric-wrap canvas { display: block; }
-
-.mask-top, .mask-bottom, .mask-left, .mask-right {
-  position: absolute; background: rgba(0,0,0,0.45); z-index: 5; pointer-events: none;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
 }
 
-.magnifier { position: fixed; z-index: 200; background: #1a1a1a; border: 1px solid #555; border-radius: 4px; padding: 4px; pointer-events: none; }
-.mag-info { display: flex; align-items: center; gap: 6px; margin-top: 3px; padding: 2px 4px; }
-.mag-swatch { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #555; flex-shrink: 0; }
-.mag-text { color: #fff; font-size: 11px; font-family: monospace; }
-.mag-pos { color: #999; font-size: 10px; font-family: monospace; padding: 0 4px 2px; }
+.screenshot-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  user-select: none;
+}
+.layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.sel-layer {
+  z-index: 2;
+  cursor: crosshair;
+}
 
-.size-label { position: fixed; z-index: 200; background: rgba(0,136,255,0.85); color: #fff; font-size: 11px; font-family: monospace; padding: 2px 6px; border-radius: 3px; pointer-events: none; }
+.fabric-wrap {
+  position: absolute;
+  z-index: 10;
+  outline: 1.5px solid #0088ff;
+  outline-offset: 0px;
+  overflow: visible;
+}
+.fabric-wrap canvas {
+  display: block;
+}
 
-.toolbar { position: fixed; z-index: 300; display: flex; align-items: center; gap: 2px; background: #222; border: 1px solid #444; border-radius: 5px; padding: 4px 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
-.tg { display: flex; gap: 2px; }
-.sep { display: block; width: 1px; height: 22px; background: #444; margin: 0 4px; }
+.mask-top,
+.mask-bottom,
+.mask-left,
+.mask-right {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 5;
+  pointer-events: none;
+}
 
-.toolbar button { width: 26px; height: 26px; border: none; border-radius: 3px; background: transparent; color: #bbb; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 3px; font-size: 13px; }
-.toolbar button:hover { background: #3a3a3a; color: #fff; }
-.toolbar button.active { background: #0078d4; color: #fff; }
-.toolbar button svg { width: 16px; height: 16px; }
+.magnifier {
+  position: fixed;
+  z-index: 200;
+  background: #1a1a1a;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 4px;
+  pointer-events: none;
+}
+.mag-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  padding: 2px 4px;
+}
+.mag-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  border: 1px solid #555;
+  flex-shrink: 0;
+}
+.mag-text {
+  color: #fff;
+  font-size: 11px;
+  font-family: monospace;
+}
+.mag-pos {
+  color: #999;
+  font-size: 10px;
+  font-family: monospace;
+  padding: 0 4px 2px;
+}
 
-.cbtn { border-radius: 50% !important; border: 2px solid #555 !important; width: 18px !important; height: 18px !important; min-width: 18px; padding: 0 !important; }
-.cbtn.active { border-color: #fff !important; }
-.dot { display: block; background: currentColor; border-radius: 50%; }
+.size-label {
+  position: fixed;
+  z-index: 200;
+  background: rgba(0, 136, 255, 0.85);
+  color: #fff;
+  font-size: 11px;
+  font-family: monospace;
+  padding: 2px 6px;
+  border-radius: 3px;
+  pointer-events: none;
+}
 
-.acts button { font-weight: bold; }
-.acts .ok { color: #4caf50; }
-.acts .ok:hover { background: #4caf50; color: #fff; }
-.acts .no { color: #f44; }
-.acts .no:hover { background: #f44; color: #fff; }
-.acts .pin:hover { background: #ff9800; }
+.toolbar {
+  position: fixed;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: #222;
+  border: 1px solid #444;
+  border-radius: 5px;
+  padding: 4px 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+.tg {
+  display: flex;
+  gap: 2px;
+}
+.sep {
+  display: block;
+  width: 1px;
+  height: 22px;
+  background: #444;
+  margin: 0 4px;
+}
+
+.toolbar button {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: #bbb;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  font-size: 13px;
+}
+.toolbar button:hover {
+  background: #3a3a3a;
+  color: #fff;
+}
+.toolbar button.active {
+  background: #0078d4;
+  color: #fff;
+}
+.toolbar button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.cbtn {
+  border-radius: 50% !important;
+  border: 2px solid #555 !important;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px;
+  padding: 0 !important;
+}
+.cbtn.active {
+  border-color: #fff !important;
+}
+.dot {
+  display: block;
+  background: currentColor;
+  border-radius: 50%;
+}
+
+.acts button {
+  font-weight: bold;
+}
+.acts .ok {
+  color: #4caf50;
+}
+.acts .ok:hover {
+  background: #4caf50;
+  color: #fff;
+}
+.acts .no {
+  color: #f44;
+}
+.acts .no:hover {
+  background: #f44;
+  color: #fff;
+}
+.acts .pin:hover {
+  background: #ff9800;
+}
 
 .custom-tooltip {
   position: absolute;
@@ -653,5 +1379,53 @@ html, body, #app { width: 100%; height: 100%; overflow: hidden; background: tran
   white-space: nowrap;
   pointer-events: none;
   z-index: 999;
+}
+
+.ocr-panel {
+  position: fixed;
+  z-index: 400;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  min-width: 200px;
+  max-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+.ocr-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #333;
+  font-size: 12px;
+  color: #ccc;
+}
+.ocr-header span {
+  flex: 1;
+}
+.ocr-header button {
+  background: #333;
+  border: none;
+  color: #ccc;
+  padding: 2px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+}
+.ocr-header button:hover {
+  background: #555;
+}
+.ocr-content {
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #eee;
+  line-height: 1.5;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
 }
 </style>

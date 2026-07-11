@@ -1,7 +1,8 @@
 <template>
   <div class="chat-wrap" :class="['place-' + placement]">
-    <div class="bubble" @mouseenter="onEnter" @mouseleave="onLeave">
-      <div class="menu-row" v-if="mode === 'menu'">
+    <div ref="bubbleRef" class="bubble" @mouseenter="onEnter" @mouseleave="onLeave">
+      <div class="bubble-text" v-if="text">{{ text }}</div>
+      <div class="menu-row" :class="{ 'has-text': !!text }">
         <div class="menu-item" @click="openScreenshot">
           <Icon icon="mdi:crop" :width="20" />
         </div>
@@ -18,7 +19,6 @@
           <Icon icon="mdi:cog" :width="20" />
         </div>
       </div>
-      <div class="bubble-text" v-else>{{ text }}</div>
     </div>
   </div>
 </template>
@@ -31,25 +31,33 @@ import mdiIcons from '@iconify-json/mdi/icons.json'
 addCollection(mdiIcons)
 
 const text = ref('')
-const mode = ref('menu')
 const placement = ref('top')
+const bubbleRef = ref(null)
 
 onMounted(() => {
   window.api.onChatUpdate((data) => {
     if (data.text !== undefined) text.value = data.text
-    if (data.mode) mode.value = data.mode
     if (data.placement) placement.value = data.placement
   })
+
+  const observer = new ResizeObserver((entries) => {
+    for (const entry of entries) {
+      const h = Math.ceil(entry.borderBoxSize[0].blockSize)
+      window.api.resizeChatWindow(h)
+    }
+  })
+  observer.observe(bubbleRef.value)
 })
 
 function onEnter() {
   window.api.setIgnoreMouse(false)
   window.api.setChatMode('menu')
+  window.api.pauseChatHide()
 }
 
 function onLeave() {
   window.api.setIgnoreMouse(true)
-  window.api.setChatMode('chat')
+  window.api.resumeChatHide()
 }
 
 function openSettings() {
@@ -84,7 +92,7 @@ body,
 #app {
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  overflow: visible;
   background: transparent;
 }
 
@@ -107,13 +115,14 @@ body,
   position: relative;
   max-width: 190px;
   min-width: 80px;
-  max-height: calc(100% - 8px);
-  overflow-y: auto;
   background: #fffaf3;
   border: 2px solid #d0b798;
   border-radius: 12px;
   padding: 6px 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .bubble-text {
@@ -128,6 +137,11 @@ body,
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.menu-row.has-text {
+  border-top: 1px solid #e8ddd0;
+  padding-top: 6px;
 }
 
 .menu-item {

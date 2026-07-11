@@ -27,17 +27,20 @@ export function calcChatPosition() {
   const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize
   const padding = 4
 
+  // 用实际窗口高度（如果窗口已创建）
+  const chatH = (chatWindow && !chatWindow.isDestroyed()) ? chatWindow.getSize()[1] : CHAT_H
+
   const centerX = mx + Math.round(mw / 2) - Math.round(CHAT_W / 2)
   let x = Math.max(padding, Math.min(centerX, sw - CHAT_W - padding))
 
-  let y = my - CHAT_H - CHAT_OFFSET
+  let y = my - chatH - CHAT_OFFSET
   let placement = 'top'
   if (y < padding) {
     y = my + mh + CHAT_OFFSET
     placement = 'bottom'
   }
-  if (y + CHAT_H > sh - padding) {
-    y = sh - CHAT_H - padding
+  if (y + chatH > sh - padding) {
+    y = sh - chatH - padding
   }
 
   return { x, y, placement }

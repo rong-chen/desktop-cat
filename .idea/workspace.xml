@@ -5,42 +5,26 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="fed6c9b4-23aa-4f07-a92e-522162ca7da9" name="更改" comment="init">
+      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/electron.vite.config.mjs" beforeDir="false" afterPath="$PROJECT_DIR$/electron.vite.config.mjs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/cat/ipc.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/cat/ipc.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/chat/ai-service.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/chat/ai-service.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/chat/ipc.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/chat/ipc.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/chat/window.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/chat/window.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/json-viewer/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/json-viewer/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/json-viewer/window.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/json-viewer/window.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/screenshot/capture.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/screenshot/capture.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/screenshot/ipc.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/screenshot/ipc.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/screenshot/window.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/screenshot/window.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/shared/constants.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/shared/constants.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/preload/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/preload/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/chat.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/clipboard.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/index.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/json-viewer.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/notify.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/settings.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/App.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/Chat.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/Clipboard.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/JsonViewer.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/Notify.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/Settings.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/Tasks.vue" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/failed.gif" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/idle.gif" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/jumping.gif" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/review.gif" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/running-left.gif" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/running-right.gif" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/running.gif" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/waiting.gif" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/assets/gifs/waving.gif" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/chat.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/clipboard.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/json-viewer.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/main.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/notify.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/settings.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/src/tasks.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/renderer/tasks.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/chat/Chat.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/chat/Chat.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/json-viewer/JsonViewer.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/json-viewer/JsonViewer.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/screenshot/Screenshot.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/screenshot/Screenshot.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/settings/Settings.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/settings/Settings.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -71,6 +55,9 @@
   &quot;associatedIndex&quot;: 7
 }</component>
   <component name="ProjectId" id="3GDPhlIuEtAoUJyXsLkhrNP7Qqu" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="1" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -88,7 +75,7 @@
     "git-widget-placeholder": "master",
     "go.import.settings.migrated": "true",
     "go.sdk.automatically.set": "true",
-    "last_opened_file_path": "/Users/rong.chen",
+    "last_opened_file_path": "/Users/rong.chen/data/yuanzhijia/desktop_cat/resources/onnx",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
@@ -99,6 +86,7 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/resources/onnx" />
       <recent name="$PROJECT_DIR$/resources/gifs" />
     </key>
   </component>
@@ -145,7 +133,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="优化" />
-    <option name="LAST_COMMIT_MESSAGE" value="优化" />
+    <MESSAGE value="init" />
+    <option name="LAST_COMMIT_MESSAGE" value="init" />
   </component>
   <component name="VgoProject">
     <settings-migrated>true</settings-migrated>

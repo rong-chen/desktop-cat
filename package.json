@@ -31,9 +31,12 @@
     "@iconify/vue": "^5.0.1",
     "codemirror": "^6.0.2",
     "electron-updater": "^6.3.9",
+    "esearch-ocr": "^8.5.0",
     "fabric": "^6.9.1",
     "node-cron": "^4.6.0",
-    "node-screenshots": "^0.2.8"
+    "node-screenshots": "^0.2.8",
+    "onnxruntime-node": "^1.27.0",
+    "xtranslator": "^1.5.8"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config": "^2.1.0",

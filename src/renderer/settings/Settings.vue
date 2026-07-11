@@ -33,7 +33,6 @@
           <select v-model="ai.mode">
             <option value="off">不开启</option>
             <option value="decompress">解压模式</option>
-            <option value="chatty">话唠模式</option>
           </select>
         </div>
         <div class="form-row">

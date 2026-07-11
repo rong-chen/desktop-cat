@@ -7,9 +7,16 @@ const api = {
   endDrag: () => ipcRenderer.send('drag-end'),
   setIgnoreMouse: (ignore) => ipcRenderer.send('set-ignore-mouse', ignore),
   setChatMode: (mode) => ipcRenderer.send('set-chat-mode', mode),
+  pauseChatHide: () => ipcRenderer.send('pause-chat-hide'),
+  resumeChatHide: () => ipcRenderer.send('resume-chat-hide'),
+  hideChatWindow: () => ipcRenderer.send('hide-chat-window'),
+  resizeChatWindow: (h) => ipcRenderer.send('resize-chat-window', h),
   openSettings: () => ipcRenderer.send('open-settings'),
   openClipboard: () => ipcRenderer.send('open-clipboard'),
   openJsonViewer: () => ipcRenderer.send('open-json-viewer'),
+  jsonViewerLoadCache: () => ipcRenderer.invoke('json-viewer-load-cache'),
+  jsonViewerSaveCache: (data) => ipcRenderer.invoke('json-viewer-save-cache', data),
+  onJsonViewerOpenTab: (cb) => ipcRenderer.on('json-viewer-open-tab', (_, content) => cb(content)),
   openTasks: () => ipcRenderer.send('open-tasks'),
   startScreenshot: () => ipcRenderer.send('start-screenshot'),
   closeNotify: () => ipcRenderer.send('close-notify'),
@@ -42,8 +49,11 @@ const api = {
   screenshotCapture: (dataUrl) => ipcRenderer.invoke('screenshot-capture', dataUrl),
   screenshotSave: (dataUrl) => ipcRenderer.invoke('screenshot-save', dataUrl),
   screenshotPin: (dataUrl, rect) => ipcRenderer.invoke('screenshot-pin', dataUrl, rect),
+  screenshotOcr: (dataUrl) => ipcRenderer.invoke('screenshot-ocr', dataUrl),
+  screenshotTranslate: (data) => ipcRenderer.invoke('screenshot-translate', data),
   onScreenshotStart: (cb) => ipcRenderer.on('screenshot-start', () => cb()),
-  onScreenshotData: (cb) => ipcRenderer.on('screenshot-data', (_, data) => cb(data))
+  onScreenshotData: (cb) => ipcRenderer.on('screenshot-data', (_, data) => cb(data)),
+  onScreenshotCopy: (cb) => ipcRenderer.on('screenshot-copy', () => cb())
 }
 
 if (process.contextIsolated) {

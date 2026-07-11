@@ -3,10 +3,12 @@
  * 处理截图的显示、取消、保存、复制和贴图操作
  */
 
-import { ipcMain, clipboard, nativeImage, dialog, screen, BrowserWindow, app } from 'electron'
+import { ipcMain, clipboard, nativeImage, dialog, screen, BrowserWindow, app, globalShortcut } from 'electron'
 import { join } from 'path'
 import { writeFileSync } from 'fs'
 import { getScreenshotWindow } from './window'
+import { recognizeText } from './ocr'
+import { translateText } from './translate'
 
 /** 注册截图相关 IPC 处理器 */
 export function setupScreenshotIpc() {
@@ -14,9 +16,16 @@ export function setupScreenshotIpc() {
   ipcMain.on('screenshot-show', () => {
     const win = getScreenshotWindow()
     if (win && !win.isDestroyed()) {
-      win.setAlwaysOnTop(true, 'floating')
-      win.setVisibleOnAllWorkspaces(true)
+      win.setAlwaysOnTop(true, 'screen-saver')
       win.showInactive()
+      globalShortcut.register('Escape', () => {
+        const w = getScreenshotWindow()
+        if (w && !w.isDestroyed()) w.close()
+      })
+      globalShortcut.register('CommandOrControl+C', () => {
+        const w = getScreenshotWindow()
+        if (w && !w.isDestroyed()) w.webContents.send('screenshot-copy')
+      })
     }
   })
 
@@ -151,5 +160,37 @@ export function setupScreenshotIpc() {
     })
 
     return true
+  })
+
+  // OCR 文字识别 - 将截图选区提交到离线 ONNX 模型进行文字提取
+  ipcMain.handle('screenshot-ocr', async (_, dataUrl) => {
+    try {
+      const img = nativeImage.createFromDataURL(dataUrl)
+      const bitmap = img.toBitmap()
+      const { width, height } = img.getSize()
+      // Electron bitmap 是 BGRA 格式，需转为 RGBA
+      const rgba = new Uint8ClampedArray(bitmap.length)
+      for (let i = 0; i < bitmap.length; i += 4) {
+        rgba[i] = bitmap[i + 2]
+        rgba[i + 1] = bitmap[i + 1]
+        rgba[i + 2] = bitmap[i]
+        rgba[i + 3] = bitmap[i + 3]
+      }
+      const imageData = { data: rgba, width, height, colorSpace: 'srgb' }
+      const texts = await recognizeText(imageData)
+      return { success: true, texts }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // 翻译 - 将 OCR 提取的文字翻译为目标语言
+  ipcMain.handle('screenshot-translate', async (_, { texts, from, to }) => {
+    try {
+      const result = await translateText(texts, from, to)
+      return { success: true, texts: result }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
   })
 }
