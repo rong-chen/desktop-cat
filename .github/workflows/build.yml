@@ -1,0 +1,77 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download ONNX models
+        shell: bash
+        run: |
+          mkdir -p resources/onnx
+          cd resources/onnx
+          curl -L -O "https://github.com/${{ github.repository }}/releases/download/models/ppocr_det.onnx"
+          curl -L -O "https://github.com/${{ github.repository }}/releases/download/models/ppocr_rec.onnx"
+          curl -L -O "https://github.com/${{ github.repository }}/releases/download/models/ppocr_rec_en.onnx"
+          curl -L -O "https://github.com/${{ github.repository }}/releases/download/models/ppocr_keys_v1.txt"
+          curl -L -O "https://github.com/${{ github.repository }}/releases/download/models/en_dict.txt"
+
+      - name: Build
+        run: npm run build:${{ matrix.platform }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.platform }}
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.exe
+            dist/*-setup.*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          draft: true
+          generate_release_notes: true
