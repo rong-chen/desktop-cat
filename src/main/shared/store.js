@@ -13,6 +13,7 @@ const dataDir = join(app.getPath('userData'), 'data')
 const clipboardFile = join(dataDir, 'clipboard.json')
 const shortcutsFile = join(dataDir, 'shortcuts.json')
 const tasksFile = join(dataDir, 'tasks.json')
+const taskLogsFile = join(dataDir, 'task-logs.json')
 const aiConfigFile = join(dataDir, 'ai-config.json')
 const reportConfigFile = join(dataDir, 'report-config.json')
 
@@ -118,7 +119,7 @@ export function saveAiConfig(config) {
   writeFileSync(aiConfigFile, JSON.stringify(config, null, 2))
 }
 
-const defaultReportConfig = { projects: [], gitUser: '' }
+const defaultReportConfig = { projects: [], gitUser: '', parentDirs: [] }
 
 /** 加载报告配置 */
 export function loadReportConfig() {
@@ -135,4 +136,37 @@ export function loadReportConfig() {
 /** 保存报告配置 */
 export function saveReportConfig(config) {
   writeFileSync(reportConfigFile, JSON.stringify(config, null, 2))
+}
+
+const MAX_TASK_LOGS = 200
+
+/** 加载任务执行日志 */
+export function loadTaskLogs(taskId) {
+  if (existsSync(taskLogsFile)) {
+    try {
+      const logs = JSON.parse(readFileSync(taskLogsFile, 'utf-8'))
+      if (taskId) return logs.filter((log) => log.taskId === taskId)
+      return logs
+    } catch (e) {
+      return []
+    }
+  }
+  return []
+}
+
+/** 追加一条任务执行日志，超过 MAX_TASK_LOGS 自动裁剪 */
+export function appendTaskLog(log) {
+  let logs = []
+  if (existsSync(taskLogsFile)) {
+    try {
+      logs = JSON.parse(readFileSync(taskLogsFile, 'utf-8'))
+    } catch (e) {
+      logs = []
+    }
+  }
+  logs.push(log)
+  if (logs.length > MAX_TASK_LOGS) {
+    logs = logs.slice(logs.length - MAX_TASK_LOGS)
+  }
+  writeFileSync(taskLogsFile, JSON.stringify(logs, null, 2))
 }

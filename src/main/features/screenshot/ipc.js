@@ -94,6 +94,10 @@ export function setupScreenshotIpc() {
       webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true }
     })
 
+    if (process.platform === 'win32') {
+      pinWin.setAlwaysOnTop(true, 'screen-saver', 2147483647)
+    }
+
     pinWin.loadURL(
       `data:text/html,<!DOCTYPE html><html><head><style>*{margin:0;padding:0}body{overflow:hidden}img{width:100%;height:100%;object-fit:contain;display:block;-webkit-user-drag:none;user-select:none}</style></head><body><img src="${encodeURI(dataUrl)}"/></body></html>`
     )

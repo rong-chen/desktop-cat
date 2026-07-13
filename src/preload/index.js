@@ -35,6 +35,9 @@ const api = {
   toggleTask: (id) => ipcRenderer.invoke('toggle-task', id),
   deleteTask: (id) => ipcRenderer.invoke('delete-task', id),
   selectApp: () => ipcRenderer.invoke('select-app'),
+  selectScript: () => ipcRenderer.invoke('select-script'),
+  selectScriptDir: () => ipcRenderer.invoke('select-script-dir'),
+  getTaskLogs: (taskId) => ipcRenderer.invoke('get-task-logs', taskId),
   testTask: (task) => ipcRenderer.invoke('test-task', task),
   getWindowInfo: () => ipcRenderer.invoke('get-window-info'),
   onChatUpdate: (callback) => ipcRenderer.on('chat-update', (_, data) => callback(data)),
@@ -68,6 +71,7 @@ const api = {
   getReportConfig: () => ipcRenderer.invoke('get-report-config'),
   saveReportConfig: (config) => ipcRenderer.invoke('save-report-config', config),
   selectProjectDir: () => ipcRenderer.invoke('select-project-dir'),
+  scanProjects: (parentDir) => ipcRenderer.invoke('scan-projects', parentDir),
   generateReport: (params) => ipcRenderer.invoke('generate-report', params),
   exportReport: (report) => ipcRenderer.invoke('export-report', report)
 }

@@ -1,6 +1,7 @@
 import { ipcMain, dialog } from 'electron'
 import { execSync } from 'child_process'
-import { writeFileSync } from 'fs'
+import { writeFileSync, readdirSync, statSync, existsSync } from 'fs'
+import { join, basename } from 'path'
 import { loadReportConfig, saveReportConfig, loadAiConfig } from '../../shared/store'
 import { openReportWindow } from './window'
 
@@ -86,16 +87,16 @@ function getGitLog(projectPath, author, after, before) {
 
 async function callAiForReport(gitLogs, type, dateRange, config) {
   const typeLabel = { daily: '日报', weekly: '周报', monthly: '月报', custom: '报告' }
-  const prompt = `你是一个工作报告生成助手。根据以下 git 提交记录，生成一份${typeLabel[type] || '报告'}。
+  const prompt = `根据以下 git commit 记录，按项目分组生成工作内容列表，用于填写${typeLabel[type] || '报告'}。
 要求：
-- title 格式："YYYY-MM-DD ${typeLabel[type] || '报告'}" 或 "YYYY-MM-DD ~ YYYY-MM-DD ${typeLabel[type] || '报告'}"
-- period 是时间范围
-- summary 是 2-3 句话的整体工作摘要
-- projects 按项目分组，每个 item 描述一项工作并标注类型
-- next_plan 根据当前工作推测接下来可能要做的事（2-4条）
-- 用中文回答`
+- 按项目分组，合并相似的提交
+- 每条简洁明了
+- 用中文回答
+- 返回纯 JSON，格式：
+{"projects":[{"name":"项目名","items":["完成xxx","修复xxx"]}]}`
 
   const url = config.baseUrl.replace(/\/+$/, '') + '/chat/completions'
+
   const body = {
     model: config.model,
     messages: [
@@ -104,7 +105,7 @@ async function callAiForReport(gitLogs, type, dateRange, config) {
     ],
     temperature: 0.3,
     max_tokens: config.maxTokens,
-    response_format: REPORT_SCHEMA
+    response_format: { type: 'json_object' }
   }
 
   const res = await fetch(url, {
@@ -124,27 +125,26 @@ async function callAiForReport(gitLogs, type, dateRange, config) {
   const data = await res.json()
   const content = data.choices?.[0]?.message?.content
   if (!content) throw new Error('AI 返回内容为空')
+  const finishReason = data.choices?.[0]?.finish_reason
+  if (finishReason === 'length') {
+    throw new Error('AI 返回内容被截断，请减少项目数量或缩短时间范围后重试')
+  }
   return JSON.parse(content)
 }
 
 function reportToMarkdown(report) {
-  let md = `# ${report.title}\n\n`
-  md += `**时间范围：** ${report.period}\n\n`
-  md += `## 工作摘要\n\n${report.summary}\n\n`
-  md += `## 完成事项\n\n`
-  for (const project of report.projects) {
-    md += `### ${project.name}\n\n`
-    for (const item of project.items) {
-      const tag = `[${item.type}]`
-      md += `- ${tag} ${item.description}\n`
+  if (report.projects) {
+    let md = ''
+    for (const project of report.projects) {
+      md += `${project.name}：\n`
+      project.items.forEach((item, i) => {
+        md += `${i + 1}. ${item}\n`
+      })
+      md += '\n'
     }
-    md += '\n'
+    return md.trim()
   }
-  md += `## 下一步计划\n\n`
-  for (const plan of report.next_plan) {
-    md += `- ${plan}\n`
-  }
-  return md
+  return JSON.stringify(report, null, 2)
 }
 
 export function setupReportIpc() {
@@ -185,6 +185,10 @@ export function setupReportIpc() {
     }
 
     const report = await callAiForReport(allLogs, type, dateRange, aiConfig)
+    // 持久化生成结果
+    const reportConfig = loadReportConfig()
+    reportConfig.lastReport = report
+    saveReportConfig(reportConfig)
     return report
   })
 
@@ -199,4 +203,72 @@ export function setupReportIpc() {
     writeFileSync(result.filePath, md, 'utf-8')
     return true
   })
+
+  ipcMain.handle('scan-projects', async (_, parentDir) => {
+    if (!parentDir || !existsSync(parentDir)) return []
+    const results = []
+
+    function scan(dir, depth) {
+      if (depth > 3) return
+      try {
+        const entries = readdirSync(dir)
+        for (const entry of entries) {
+          if (entry.startsWith('.')) continue
+          const fullPath = join(dir, entry)
+          try {
+            const stat = statSync(fullPath)
+            if (!stat.isDirectory()) continue
+            if (existsSync(join(fullPath, '.git'))) {
+              results.push({ name: entry, path: fullPath })
+            } else {
+              scan(fullPath, depth + 1)
+            }
+          } catch {
+            // skip inaccessible
+          }
+        }
+      } catch {
+        // skip
+      }
+    }
+
+    // 先检查选中的目录本身是不是 git 仓库
+    if (existsSync(join(parentDir, '.git'))) {
+      results.push({ name: basename(parentDir), path: parentDir })
+    } else {
+      scan(parentDir, 0)
+    }
+
+    return results
+  })
+}
+
+/**
+ * 自动执行 Git 报告生成（供定时任务调度器调用）
+ * 返回生成的报告对象，同时持久化到 reportConfig
+ */
+export async function runGitReport(reportType) {
+  const reportConfig = loadReportConfig()
+  const aiConfig = loadAiConfig()
+  if (!aiConfig.apiKey) return null
+
+  const projects = reportConfig.projects || []
+  if (projects.length === 0) return null
+
+  const dateRange = getDateRange(reportType || 'daily', null)
+  let allLogs = ''
+
+  for (const project of projects) {
+    const log = getGitLog(project.path, reportConfig.gitUser, dateRange.after, dateRange.before)
+    if (log) {
+      allLogs += `\n## 项目: ${project.name} (${project.path})\n${log}\n`
+    }
+  }
+
+  if (!allLogs.trim()) return null
+
+  const report = await callAiForReport(allLogs, reportType || 'daily', dateRange, aiConfig)
+  reportConfig.lastReport = report
+  saveReportConfig(reportConfig)
+  return report
 }

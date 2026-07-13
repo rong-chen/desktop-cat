@@ -16,6 +16,7 @@
         <select v-model="form.type">
           <option value="notification">消息提醒</option>
           <option value="open-app">打开软件</option>
+          <option value="run-script">执行脚本</option>
         </select>
       </div>
       <div class="form-row" v-if="form.type === 'notification'">
@@ -26,6 +27,45 @@
         <label>应用</label>
         <input v-model="form.appPath" placeholder="点击右侧选择应用" readonly />
         <button class="select-btn" @click="selectApp">选择</button>
+      </div>
+      <div class="form-row" v-if="form.type === 'run-script'">
+        <label>工作目录</label>
+        <input v-model="form.scriptPath" placeholder="点击右侧选择目录" readonly />
+        <button class="select-btn" @click="selectScriptDir">选择</button>
+      </div>
+      <div class="form-row" v-if="form.type === 'run-script'">
+        <label>执行命令</label>
+        <textarea
+          v-model="form.scriptArgs"
+          placeholder="如: bash deploy.sh / python build.py / node index.js"
+          rows="3"
+        ></textarea>
+      </div>
+      <div class="form-row vars-hint" v-if="form.type === 'run-script'">
+        <label></label>
+        <div class="hint-text">
+          可用变量：<code>${gitUser}</code> Git用户名，
+          <code>${projectName_N}</code> 第N个项目名，
+          <code>${projectPath_N}</code> 第N个项目路径，
+          <code>${allProjectNames}</code> 所有项目名(逗号分隔)，
+          <code>${allProjectPaths}</code> 所有项目路径(逗号分隔)，
+          <code>${report}</code> 最近生成的报告内容
+        </div>
+      </div>
+      <div class="form-row" v-if="form.type === 'run-script'">
+        <label>Git 分析</label>
+        <label class="checkbox-item">
+          <input type="checkbox" v-model="form.enableGitReport" />
+          <span>执行前先生成 Git 报告（执行完毕后再运行脚本）</span>
+        </label>
+      </div>
+      <div class="form-row" v-if="form.type === 'run-script' && form.enableGitReport">
+        <label>报告类型</label>
+        <select v-model="form.gitReportType">
+          <option value="daily">日报</option>
+          <option value="weekly">周报</option>
+          <option value="monthly">月报</option>
+        </select>
       </div>
       <div class="form-row">
         <label>执行时间</label>
@@ -73,8 +113,18 @@
       </div>
       <div class="form-actions">
         <button @click="saveTask">{{ editingId ? '保存' : '添加' }}</button>
-        <button class="test-btn" @click="testTask">测试执行</button>
+        <button class="test-btn" @click="testTask" :disabled="testing">
+          {{ testing ? '执行中...' : '测试执行' }}
+        </button>
         <button class="cancel-btn" @click="cancelForm">取消</button>
+      </div>
+      <div class="test-result" v-if="testResult">
+        <div class="test-result-header" :class="{ success: testResult.exitCode === 0, error: testResult.exitCode !== 0 }">
+          {{ testResult.exitCode === 0 ? '执行成功' : '执行失败' }}
+          <span class="test-meta">退出码: {{ testResult.exitCode }} | 耗时: {{ testResult.duration }}ms</span>
+        </div>
+        <pre class="test-output" v-if="testResult.stdout">{{ testResult.stdout }}</pre>
+        <pre class="test-stderr" v-if="testResult.stderr">{{ testResult.stderr }}</pre>
       </div>
     </div>
 
@@ -91,7 +141,7 @@
       <tbody>
         <tr v-for="task in tasks" :key="task.id">
           <td>{{ task.name }}</td>
-          <td>{{ task.type === 'notification' ? '消息提醒' : '打开软件' }}</td>
+          <td>{{ typeLabel(task.type) }}</td>
           <td class="cron-cell">
             {{ task.cron }}
             <span v-if="task.dayMode === 'workday'" class="day-mode-tag workday">工作日</span>
@@ -105,6 +155,7 @@
           <td class="actions-cell">
             <button @click="toggleTask(task)">{{ task.enabled ? '停用' : '启用' }}</button>
             <button @click="editTask(task)">编辑</button>
+            <button v-if="task.type === 'run-script'" @click="viewLogs(task)">日志</button>
             <button class="delete-btn" @click="deleteTask(task.id)">删除</button>
           </td>
         </tr>
@@ -113,6 +164,31 @@
 
     <div class="empty" v-if="tasks.length === 0 && !showForm">
       暂无任务，点击"新增任务"开始
+    </div>
+
+    <div class="log-panel" v-if="showLogs">
+      <div class="log-header">
+        <h3>执行日志 - {{ logTaskName }}</h3>
+        <button class="cancel-btn" @click="showLogs = false">关闭</button>
+      </div>
+      <div class="log-list" v-if="logs.length > 0">
+        <div class="log-item" v-for="(log, i) in logs" :key="i" :class="{ error: log.exitCode !== 0 }">
+          <div class="log-meta">
+            <span class="log-time">{{ formatTime(log.time) }}</span>
+            <span class="log-exit" :class="{ success: log.exitCode === 0 }">
+              退出码: {{ log.exitCode }}
+            </span>
+            <span class="log-duration">耗时: {{ log.duration }}ms</span>
+          </div>
+          <div class="log-output" v-if="log.stdout">
+            <pre>{{ log.stdout }}</pre>
+          </div>
+          <div class="log-stderr" v-if="log.stderr">
+            <pre>{{ log.stderr }}</pre>
+          </div>
+        </div>
+      </div>
+      <div class="log-empty" v-else>暂无执行日志</div>
     </div>
   </div>
 </template>
@@ -123,6 +199,11 @@ import { ref, onMounted, reactive } from 'vue'
 const tasks = ref([])
 const showForm = ref(false)
 const editingId = ref(null)
+const showLogs = ref(false)
+const testing = ref(false)
+const testResult = ref(null)
+const logTaskName = ref('')
+const logs = ref([])
 const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 
 const form = reactive({
@@ -130,6 +211,10 @@ const form = reactive({
   type: 'notification',
   message: '',
   appPath: '',
+  scriptPath: '',
+  scriptArgs: '',
+  enableGitReport: false,
+  gitReportType: 'daily',
   cronPreset: 'daily',
   time: '09:00',
   weekdays: [],
@@ -140,6 +225,13 @@ const form = reactive({
 onMounted(async () => {
   tasks.value = await window.api.getTasks()
 })
+
+function typeLabel(type) {
+  if (type === 'notification') return '消息提醒'
+  if (type === 'open-app') return '打开软件'
+  if (type === 'run-script') return '执行脚本'
+  return type
+}
 
 function onPresetChange() {
   form.cron = ''
@@ -169,6 +261,10 @@ async function saveTask() {
     cron,
     message: form.type === 'notification' ? form.message : '',
     appPath: form.type === 'open-app' ? form.appPath : '',
+    scriptPath: form.type === 'run-script' ? form.scriptPath : '',
+    scriptArgs: form.type === 'run-script' ? form.scriptArgs : '',
+    enableGitReport: form.type === 'run-script' ? form.enableGitReport : false,
+    gitReportType: form.type === 'run-script' ? form.gitReportType : 'daily',
     weekdays: [...form.weekdays],
     dayMode: form.dayMode,
     enabled: true
@@ -195,6 +291,10 @@ function editTask(task) {
   form.type = task.type
   form.message = task.message || ''
   form.appPath = task.appPath || ''
+  form.scriptPath = task.scriptPath || ''
+  form.scriptArgs = task.scriptArgs || ''
+  form.enableGitReport = task.enableGitReport || false
+  form.gitReportType = task.gitReportType || 'daily'
   form.weekdays = task.weekdays || []
   form.dayMode = task.dayMode || 'all'
   form.cronPreset = ''
@@ -219,22 +319,61 @@ async function selectApp() {
   }
 }
 
+async function selectScriptDir() {
+  const path = await window.api.selectScriptDir()
+  if (path) {
+    form.scriptPath = path
+  }
+}
+
 async function testTask() {
   const data = {
+    id: editingId.value || 'test',
+    name: form.name || 'test',
     type: form.type,
     message: form.type === 'notification' ? (form.message || form.name) : '',
-    appPath: form.type === 'open-app' ? form.appPath : ''
+    appPath: form.type === 'open-app' ? form.appPath : '',
+    scriptPath: form.type === 'run-script' ? form.scriptPath : '',
+    scriptArgs: form.type === 'run-script' ? form.scriptArgs : '',
+    enableGitReport: form.type === 'run-script' ? form.enableGitReport : false,
+    gitReportType: form.type === 'run-script' ? form.gitReportType : 'daily'
   }
-  await window.api.testTask(data)
+  testing.value = true
+  testResult.value = null
+  try {
+    const result = await window.api.testTask(data)
+    testResult.value = result
+  } catch (e) {
+    testResult.value = { exitCode: -1, stdout: '', stderr: e.message, duration: 0 }
+  } finally {
+    testing.value = false
+  }
+}
+
+async function viewLogs(task) {
+  logTaskName.value = task.name
+  logs.value = await window.api.getTaskLogs(task.id)
+  logs.value.reverse()
+  showLogs.value = true
+}
+
+function formatTime(iso) {
+  const d = new Date(iso)
+  return d.toLocaleString()
 }
 
 function cancelForm() {
   showForm.value = false
   editingId.value = null
+  testResult.value = null
   form.name = ''
   form.type = 'notification'
   form.message = ''
   form.appPath = ''
+  form.scriptPath = ''
+  form.scriptArgs = ''
+  form.enableGitReport = false
+  form.gitReportType = 'daily'
   form.cronPreset = 'daily'
   form.time = '09:00'
   form.weekdays = []
@@ -541,6 +680,193 @@ body {
 .empty {
   text-align: center;
   padding: 60px;
+  color: #8a7a6a;
+  font-size: 13px;
+}
+
+.form-row textarea {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid #d0b798;
+  border-radius: 6px;
+  font-size: 12px;
+  background: #fff;
+  color: #3a2a1a;
+  outline: none;
+  resize: vertical;
+  font-family: 'SF Mono', Consolas, monospace;
+}
+
+.form-row textarea:focus {
+  border-color: #b08968;
+}
+
+.vars-hint .hint-text {
+  font-size: 11px;
+  color: #8a7a6a;
+  line-height: 1.6;
+}
+
+.vars-hint code {
+  background: #f0ebe3;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: 'SF Mono', Consolas, monospace;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  min-width: auto !important;
+}
+
+.checkbox-item input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #d0b798;
+}
+
+.test-result {
+  margin-top: 12px;
+  border: 1px solid #e8ddd0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.test-result-header {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.test-result-header.success {
+  background: #e8f5e8;
+  color: #4a8a4a;
+}
+
+.test-result-header.error {
+  background: #fef0f0;
+  color: #a05050;
+}
+
+.test-meta {
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.test-output,
+.test-stderr {
+  font-size: 11px;
+  font-family: 'SF Mono', Consolas, monospace;
+  padding: 8px 12px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.test-output {
+  background: #f8f5f0;
+  color: #3a2a1a;
+}
+
+.test-stderr {
+  background: #fef0f0;
+  color: #a05050;
+}
+
+.log-panel {
+  background: #fff;
+  border: 1px solid #e8ddd0;
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.log-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.log-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.log-item {
+  border: 1px solid #f0ebe3;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.log-item.error {
+  border-color: #f0c0c0;
+  background: #fffafa;
+}
+
+.log-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
+.log-time {
+  color: #5a4a3a;
+}
+
+.log-exit {
+  color: #a05050;
+  font-weight: 500;
+}
+
+.log-exit.success {
+  color: #4a8a4a;
+}
+
+.log-duration {
+  color: #8a7a6a;
+}
+
+.log-output pre,
+.log-stderr pre {
+  font-size: 11px;
+  font-family: 'SF Mono', Consolas, monospace;
+  background: #f8f5f0;
+  border-radius: 4px;
+  padding: 8px;
+  margin: 4px 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.log-stderr pre {
+  background: #fef0f0;
+  color: #a05050;
+}
+
+.log-empty {
+  text-align: center;
+  padding: 30px;
   color: #8a7a6a;
   font-size: 13px;
 }

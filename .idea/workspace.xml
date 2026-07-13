@@ -4,7 +4,19 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fed6c9b4-23aa-4f07-a92e-522162ca7da9" name="更改" comment="项目完成，下一步调试" />
+    <list default="true" id="fed6c9b4-23aa-4f07-a92e-522162ca7da9" name="更改" comment="项目完成，下一步调试">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/report/ipc.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/report/ipc.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/screenshot/ipc.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/screenshot/ipc.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/screenshot/window.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/screenshot/window.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/tasks/ipc.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/tasks/ipc.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/tasks/scheduler.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/tasks/scheduler.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/shared/store.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/shared/store.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preload/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/preload/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/report/Report.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/report/Report.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/tasks/Tasks.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/tasks/Tasks.vue" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -23,6 +35,9 @@
     &quot;accountId&quot;: &quot;1cf5ceeb-5dec-4eb8-8612-66fc6cfc90e4&quot;
   }
 }</component>
+  <component name="GoLibraries">
+    <option name="indexEntireGoPath" value="true" />
+  </component>
   <component name="KubernetesApiPersistence">{}</component>
   <component name="KubernetesApiProvider">{
   &quot;isMigrated&quot;: true

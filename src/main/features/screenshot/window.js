@@ -19,7 +19,7 @@ export function createScreenshotWindow() {
   if (screenshotWindow && !screenshotWindow.isDestroyed()) return
 
   const display = screen.getPrimaryDisplay()
-  const { width, height } = display.size
+  const { width, height } = display.bounds
 
   const isWin = process.platform === 'win32'
 
@@ -33,10 +33,10 @@ export function createScreenshotWindow() {
     frame: false,
     alwaysOnTop: true,
     hasShadow: false,
-    resizable: false,
+    resizable: isWin,
     skipTaskbar: true,
     fullscreenable: false,
-    enableLargerThanScreen: false,
+    enableLargerThanScreen: isWin,
     movable: false,
     focusable: isWin,
     webPreferences: {
@@ -48,6 +48,14 @@ export function createScreenshotWindow() {
   })
 
   screenshotWindow.setIgnoreMouseEvents(false)
+
+  if (isWin) {
+    screenshotWindow.on('show', () => {
+      screenshotWindow.setBounds(display.bounds)
+      screenshotWindow.setAlwaysOnTop(true, 'screen-saver', 2147483647)
+      screenshotWindow.setResizable(false)
+    })
+  }
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     screenshotWindow.loadURL(process.env['ELECTRON_RENDERER_URL'] + '/screenshot/index.html')

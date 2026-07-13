@@ -4,8 +4,8 @@
  */
 
 import { ipcMain, dialog } from 'electron'
-import { loadTasks, saveTasks } from '../../shared/store'
-import { scheduleTask, executeTask, getScheduledJobs } from './scheduler'
+import { loadTasks, saveTasks, loadTaskLogs } from '../../shared/store'
+import { scheduleTask, executeTask, testExecuteTask, getScheduledJobs } from './scheduler'
 
 /** 注册定时任务相关 IPC 处理器 */
 export function setupTasksIpc() {
@@ -77,9 +77,40 @@ export function setupTasksIpc() {
     return result.filePaths[0]
   })
 
-  // 立即测试执行一次任务
-  ipcMain.handle('test-task', (_, task) => {
-    executeTask(task)
-    return true
+  // 立即测试执行一次任务，返回执行结果
+  ipcMain.handle('test-task', async (_, task) => {
+    return await testExecuteTask(task)
+  })
+
+  // 选择脚本文件（用于"执行脚本"类型任务）
+  ipcMain.handle('select-script', async () => {
+    const isMac = process.platform === 'darwin'
+    const isWin = process.platform === 'win32'
+    const result = await dialog.showOpenDialog({
+      title: '选择脚本文件',
+      properties: ['openFile'],
+      filters: isWin
+        ? [{ name: '脚本文件', extensions: ['bat', 'cmd', 'ps1', 'vbs', 'sh', 'py'] }]
+        : isMac
+          ? [{ name: '脚本文件', extensions: ['sh', 'command', 'py', 'rb'] }]
+          : [{ name: '所有文件', extensions: ['*'] }]
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
+  })
+
+  // 选择工作目录（用于"执行脚本"类型任务）
+  ipcMain.handle('select-script-dir', async () => {
+    const result = await dialog.showOpenDialog({
+      title: '选择工作目录',
+      properties: ['openDirectory']
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
+  })
+
+  // 获取任务执行日志
+  ipcMain.handle('get-task-logs', (_, taskId) => {
+    return loadTaskLogs(taskId)
   })
 }

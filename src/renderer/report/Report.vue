@@ -9,7 +9,15 @@
       <div class="section-content">
         <div class="form-row">
           <label>Git 用户名</label>
-          <input v-model="config.gitUser" placeholder="留空则不过滤作者" />
+          <input v-model="config.gitUser" placeholder="留空则不过滤作者" @change="saveConfig" />
+        </div>
+        <div class="parent-dirs" v-if="config.parentDirs && config.parentDirs.length">
+          <label class="parent-label">扫描目录</label>
+          <div class="parent-dir-item" v-for="(dir, i) in config.parentDirs" :key="i">
+            <span class="project-path">{{ dir }}</span>
+            <button class="select-btn" @click="rescanDir(dir)">重新扫描</button>
+            <button class="remove-btn" @click="removeParentDir(i)">移除</button>
+          </div>
         </div>
         <div class="project-list">
           <div class="project-item" v-for="(p, i) in config.projects" :key="i">
@@ -17,7 +25,10 @@
             <span class="project-path">{{ p.path }}</span>
             <button class="remove-btn" @click="removeProject(i)">删除</button>
           </div>
-          <button class="add-btn" @click="addProject">+ 添加项目</button>
+          <div class="project-actions">
+            <button class="add-btn" @click="addProject">+ 添加项目</button>
+            <button class="add-btn" @click="scanParentDir">+ 扫描父目录</button>
+          </div>
         </div>
       </div>
     </div>
@@ -52,37 +63,25 @@
 
     <div v-if="report" class="report-section">
       <div class="section-header">
-        <h2>{{ report.title }}</h2>
-        <button class="export-btn" @click="exportReport">导出 .md</button>
+        <h2>生成结果</h2>
+        <button class="export-btn" @click="exportReport">导出</button>
       </div>
       <div class="section-content report-result">
-        <p class="report-period">{{ report.period }}</p>
-        <h3>工作摘要</h3>
-        <p>{{ report.summary }}</p>
-
         <div v-for="project in report.projects" :key="project.name" class="report-project">
-          <h3>{{ project.name }}</h3>
-          <ul>
-            <li v-for="(item, i) in project.items" :key="i">
-              <span class="item-tag" :class="item.type">{{ item.type }}</span>
-              {{ item.description }}
-            </li>
-          </ul>
+          <h3>{{ project.name }}：</h3>
+          <ol>
+            <li v-for="(item, i) in project.items" :key="i">{{ item }}</li>
+          </ol>
         </div>
-
-        <h3>下一步计划</h3>
-        <ul>
-          <li v-for="(plan, i) in report.next_plan" :key="i">{{ plan }}</li>
-        </ul>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, toRaw, onMounted } from 'vue'
 
-const config = reactive({ projects: [], gitUser: '' })
+const config = reactive({ projects: [], gitUser: '', parentDirs: [] })
 const reportType = ref('daily')
 const customStart = ref('')
 const customEnd = ref('')
@@ -100,19 +99,76 @@ const types = [
 onMounted(async () => {
   const saved = await window.api.getReportConfig()
   Object.assign(config, saved)
+  if (saved.lastReport) {
+    report.value = saved.lastReport
+  }
 })
 
 async function addProject() {
   const dir = await window.api.selectProjectDir()
   if (!dir) return
-  const name = dir.split('/').pop() || dir
+  const name = dir.split(/[/\\]/).pop() || dir
   config.projects.push({ name, path: dir })
-  await window.api.saveReportConfig({ ...config })
+  await saveConfig()
+}
+
+async function scanParentDir() {
+  const dir = await window.api.selectProjectDir()
+  if (!dir) return
+  const found = await window.api.scanProjects(dir)
+  if (!found || found.length === 0) {
+    alert('未在该目录下找到 Git 项目')
+    return
+  }
+  if (!config.parentDirs) config.parentDirs = []
+  if (!config.parentDirs.includes(dir)) {
+    config.parentDirs.push(dir)
+  }
+  const existingPaths = new Set(config.projects.map((p) => p.path))
+  let added = 0
+  for (const p of found) {
+    if (!existingPaths.has(p.path)) {
+      config.projects.push(p)
+      added++
+    }
+  }
+  await saveConfig()
+  alert(`扫描完成，发现 ${found.length} 个 Git 项目，新增 ${added} 个`)
 }
 
 function removeProject(index) {
   config.projects.splice(index, 1)
-  window.api.saveReportConfig({ ...config })
+  saveConfig()
+}
+
+async function rescanDir(dir) {
+  const found = await window.api.scanProjects(dir)
+  if (!found || found.length === 0) {
+    alert('未在该目录下找到 Git 项目')
+    return
+  }
+  const existingPaths = new Set(config.projects.map((p) => p.path))
+  let added = 0
+  for (const p of found) {
+    if (!existingPaths.has(p.path)) {
+      config.projects.push(p)
+      added++
+    }
+  }
+  if (added > 0) {
+    await saveConfig()
+  }
+  alert(`扫描完成，发现 ${found.length} 个 Git 项目，新增 ${added} 个`)
+}
+
+function removeParentDir(index) {
+  config.parentDirs.splice(index, 1)
+  saveConfig()
+}
+
+function saveConfig() {
+  const raw = JSON.parse(JSON.stringify(config))
+  return window.api.saveReportConfig(raw)
 }
 
 async function generate() {
@@ -127,7 +183,7 @@ async function generate() {
   try {
     const result = await window.api.generateReport({
       type: reportType.value,
-      projects: config.projects,
+      projects: JSON.parse(JSON.stringify(config.projects)),
       gitUser: config.gitUser,
       customRange: reportType.value === 'custom' ? { start: customStart.value, end: customEnd.value } : null
     })
@@ -285,6 +341,49 @@ body {
 }
 
 .add-btn:hover {
+  background: #f5ede3;
+}
+
+.project-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.parent-dirs {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0ebe3;
+}
+
+.parent-label {
+  font-size: 12px;
+  color: #8a7a6a;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.parent-dir-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.parent-dir-item .project-path {
+  flex: 1;
+}
+
+.parent-dir-item .select-btn {
+  padding: 3px 8px;
+  font-size: 11px;
+  border: 1px solid #d0b798;
+  border-radius: 4px;
+  background: #fff;
+  color: #5a4a3a;
+  cursor: pointer;
+}
+
+.parent-dir-item .select-btn:hover {
   background: #f5ede3;
 }
 
