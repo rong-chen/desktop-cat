@@ -48,10 +48,12 @@ jobs:
           curl -L -O "https://github.com/${{ github.repository }}/releases/download/models/en_dict.txt"
 
       - name: Build
-        run: npm run build:${{ matrix.platform }}
+        shell: bash
+        run: npx electron-vite build && npx electron-builder --${{ matrix.platform }} --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          WIN_CSC_LINK: ""
 
       - name: Ad-hoc codesign (macOS)
         if: matrix.platform == 'mac'
