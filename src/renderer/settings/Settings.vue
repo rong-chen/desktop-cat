@@ -104,6 +104,9 @@
           <button v-if="updateDownloaded" class="save-btn" @click="installUpdate">
             立即安装 {{ newVersion }}
           </button>
+          <button v-else-if="downloading" class="save-btn" disabled>
+            下载中 {{ updateProgress.toFixed(1) }}%
+          </button>
           <button v-else class="save-btn" @click="checkUpdate" :disabled="checking">
             {{ checking ? '检查中...' : '检查更新' }}
           </button>
@@ -144,6 +147,7 @@ const appVersion = ref(__APP_VERSION__ || '未知')
 const updateStatus = ref('未检查')
 const updateProgress = ref(0)
 const updateDownloaded = ref(false)
+const downloading = ref(false)
 const newVersion = ref('')
 const checking = ref(false)
 
@@ -165,6 +169,7 @@ onMounted(async () => {
   if (state) {
     if (state.status === 'downloading') {
       newVersion.value = state.version
+      downloading.value = true
       updateStatus.value = `发现新版本 ${state.version}，正在下载...`
       updateProgress.value = state.percent
     } else if (state.status === 'downloaded') {
@@ -181,6 +186,7 @@ onMounted(async () => {
 
   window.api.onUpdateAvailable((data) => {
     newVersion.value = data.version
+    downloading.value = true
     updateStatus.value = `发现新版本 ${data.version}，正在下载...`
   })
   window.api.onUpdateNotAvailable(() => {
@@ -190,12 +196,14 @@ onMounted(async () => {
     updateProgress.value = data.percent
   })
   window.api.onUpdateDownloaded((data) => {
+    downloading.value = false
     updateDownloaded.value = true
     newVersion.value = data?.version || newVersion.value
     updateStatus.value = `新版本 ${newVersion.value} 已下载完成`
     updateProgress.value = 100
   })
   window.api.onUpdateError((data) => {
+    downloading.value = false
     updateStatus.value = `更新失败: ${data.message}`
     checking.value = false
   })
