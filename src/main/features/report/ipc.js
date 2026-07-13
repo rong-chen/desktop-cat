@@ -2,6 +2,7 @@ import { ipcMain, dialog } from 'electron'
 import { execSync } from 'child_process'
 import { writeFileSync } from 'fs'
 import { loadReportConfig, saveReportConfig, loadAiConfig } from '../../shared/store'
+import { openReportWindow } from './window'
 
 const REPORT_SCHEMA = {
   type: 'json_schema',
@@ -147,6 +148,8 @@ function reportToMarkdown(report) {
 }
 
 export function setupReportIpc() {
+  ipcMain.on('open-report', () => openReportWindow())
+
   ipcMain.handle('get-report-config', () => loadReportConfig())
 
   ipcMain.handle('save-report-config', (_, config) => {

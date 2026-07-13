@@ -18,6 +18,7 @@ const api = {
   jsonViewerSaveCache: (data) => ipcRenderer.invoke('json-viewer-save-cache', data),
   onJsonViewerOpenTab: (cb) => ipcRenderer.on('json-viewer-open-tab', (_, content) => cb(content)),
   openTasks: () => ipcRenderer.send('open-tasks'),
+  openReport: () => ipcRenderer.send('open-report'),
   startScreenshot: () => ipcRenderer.send('start-screenshot'),
   closeNotify: () => ipcRenderer.send('close-notify'),
   getClipboardHistory: () => ipcRenderer.invoke('get-clipboard-history'),

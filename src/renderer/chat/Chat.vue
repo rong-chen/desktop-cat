@@ -15,6 +15,9 @@
         <div class="menu-item" @click="openTasks">
           <Icon icon="mdi:calendar-clock" :width="20" />
         </div>
+        <div class="menu-item" @click="openReport">
+          <Icon icon="mdi:file-chart" :width="20" />
+        </div>
         <div class="menu-item" @click="openSettings">
           <Icon icon="mdi:cog" :width="20" />
         </div>
@@ -87,6 +90,10 @@ function openJsonViewer() {
 
 function openTasks() {
   window.api.openTasks()
+}
+
+function openReport() {
+  window.api.openReport()
 }
 
 function openScreenshot() {
