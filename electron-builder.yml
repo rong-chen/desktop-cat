@@ -19,6 +19,7 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
+  artifactName: ${name}-${version}-${arch}-mac.${ext}
   identity: null
   entitlementsInherit: build/entitlements.mac.plist
   target:
@@ -33,7 +34,7 @@ mac:
     NSScreenCaptureUsageDescription: 截图功能需要屏幕录制权限。
   notarize: false
 dmg:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${name}-${version}-${arch}.${ext}
 linux:
   target:
     - AppImage
