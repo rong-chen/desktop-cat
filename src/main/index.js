@@ -21,6 +21,9 @@ import { setupSettingsIpc } from './features/settings'
 import { setupNotifyIpc } from './features/notify'
 import { setupTasksIpc, scheduleAllTasks, stopAllTasks } from './features/tasks'
 import { setupScreenshotIpc } from './features/screenshot'
+import { createScreenshotWindow } from './features/screenshot/window'
+import { setupUpdater } from './features/updater'
+import { setupReportIpc } from './features/report'
 import { createTray } from './features/tray'
 import { registerShortcuts } from './shortcuts'
 
@@ -36,12 +39,13 @@ function setupAllIpc() {
   setupNotifyIpc()
   setupTasksIpc()
   setupScreenshotIpc()
+  setupReportIpc()
 }
 
 // ======================== 应用生命周期 ========================
 
 app.whenReady().then(async () => {
-  electronApp.setAppUserModelId('com.desktop-cat')
+  electronApp.setAppUserModelId('com.yuanzhijia.miaozs')
 
   // macOS 下设置为 accessory 模式（不显示在 Dock）
   if (process.platform === 'darwin') {
@@ -58,11 +62,13 @@ app.whenReady().then(async () => {
   setupAllIpc()
   createCatWindow()
   createChatWindow()
+  createScreenshotWindow()
   createTray()
   startClipboardWatch()
   registerShortcuts()
   scheduleAllTasks()
   startJokeIfDecompress()
+  setupUpdater()
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createCatWindow()

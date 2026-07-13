@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: desktop_cat
+appId: com.yuanzhijia.miaozs
+productName: 喵助手
 directories:
   buildResources: build
 files:
@@ -8,26 +8,32 @@ files:
   - '!electron.vite.config.{js,ts,mjs,cjs}'
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
-asarUnpack:
-  - resources/**
 win:
-  executableName: desktop_cat
+  executableName: miaozs
+  signAndEditExecutable: false
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
+  artifactName: ${name}-${version}-${arch}-mac.${ext}
+  identity: null
   entitlementsInherit: build/entitlements.mac.plist
+  sign: false
+  target:
+    - dmg
+    - zip
   extendInfo:
     LSUIElement: true
     NSCameraUsageDescription: Application requests access to the device's camera.
     NSMicrophoneUsageDescription: Application requests access to the device's microphone.
     NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+    NSScreenCaptureUsageDescription: 截图功能需要屏幕录制权限。
   notarize: false
 dmg:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${name}-${version}-${arch}.${ext}
 linux:
   target:
     - AppImage
@@ -39,7 +45,8 @@ appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
 publish:
-  provider: generic
-  url: https://example.com/auto-updates
+  provider: github
+  owner: rong-chen
+  repo: desktop-cat
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/

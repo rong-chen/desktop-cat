@@ -1,7 +1,7 @@
 {
-  "name": "desktop_cat",
-  "version": "1.0.0",
-  "description": "An Electron application with Vue",
+  "name": "miaozs",
+  "version": "1.0.4",
+  "description": "喵助手 - 桌面猫咪助手应用",
   "main": "./out/main/index.js",
   "author": "example.com",
   "homepage": "https://electron-vite.org",
