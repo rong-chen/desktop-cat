@@ -11,6 +11,7 @@ import { openSettingsWindow } from '../settings/window'
 import { openClipboardWindow } from '../clipboard/window'
 import { openJsonViewerWindow } from '../json-viewer/window'
 import { openTasksWindow } from '../tasks/window'
+import { openReportWindow } from '../report/window'
 import { startScreenshot } from '../screenshot/capture'
 
 let tray = null
@@ -38,6 +39,7 @@ export function createTray() {
     { label: '剪贴板历史', click: () => openClipboardWindow() },
     { label: 'JSON 查看器', click: () => openJsonViewerWindow() },
     { label: '定时任务', click: () => openTasksWindow() },
+    { label: '工作报告', click: () => openReportWindow() },
     { type: 'separator' },
     {
       label: '退出',

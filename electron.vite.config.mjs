@@ -12,7 +12,7 @@ export default defineConfig({
         entry: 'src/main/index.js'
       },
       rollupOptions: {
-        external: ['node-screenshots', 'onnxruntime-node', 'esearch-ocr']
+        external: ['node-screenshots']
       }
     }
   },
@@ -28,11 +28,11 @@ export default defineConfig({
       __APP_VERSION__: JSON.stringify(pkg.version)
     },
     optimizeDeps: {
-      exclude: ['onnxruntime-node', 'esearch-ocr', 'node-screenshots']
+      exclude: ['node-screenshots']
     },
     build: {
       rollupOptions: {
-        external: ['onnxruntime-node', 'esearch-ocr', 'path', 'fs'],
+        external: ['path', 'fs'],
         input: {
           index: resolve('src/renderer/cat/index.html'),
           chat: resolve('src/renderer/chat/index.html'),
@@ -41,7 +41,8 @@ export default defineConfig({
           'json-viewer': resolve('src/renderer/json-viewer/index.html'),
           tasks: resolve('src/renderer/tasks/index.html'),
           notify: resolve('src/renderer/notify/index.html'),
-          screenshot: resolve('src/renderer/screenshot/index.html')
+          screenshot: resolve('src/renderer/screenshot/index.html'),
+          report: resolve('src/renderer/report/index.html')
         }
       }
     }

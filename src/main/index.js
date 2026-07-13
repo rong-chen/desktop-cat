@@ -23,6 +23,7 @@ import { setupTasksIpc, scheduleAllTasks, stopAllTasks } from './features/tasks'
 import { setupScreenshotIpc } from './features/screenshot'
 import { createScreenshotWindow } from './features/screenshot/window'
 import { setupUpdater } from './features/updater'
+import { setupReportIpc } from './features/report'
 import { createTray } from './features/tray'
 import { registerShortcuts } from './shortcuts'
 
@@ -38,6 +39,7 @@ function setupAllIpc() {
   setupNotifyIpc()
   setupTasksIpc()
   setupScreenshotIpc()
+  setupReportIpc()
 }
 
 // ======================== 应用生命周期 ========================

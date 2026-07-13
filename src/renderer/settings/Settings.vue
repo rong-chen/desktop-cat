@@ -160,6 +160,25 @@ onMounted(async () => {
 
   document.addEventListener('keydown', onKeyDown)
 
+  // 恢复当前更新状态
+  const state = await window.api.getUpdateState()
+  if (state) {
+    if (state.status === 'downloading') {
+      newVersion.value = state.version
+      updateStatus.value = `发现新版本 ${state.version}，正在下载...`
+      updateProgress.value = state.percent
+    } else if (state.status === 'downloaded') {
+      newVersion.value = state.version
+      updateDownloaded.value = true
+      updateStatus.value = `新版本 ${state.version} 已下载完成`
+      updateProgress.value = 100
+    } else if (state.status === 'error') {
+      updateStatus.value = `更新失败: ${state.error}`
+    } else if (state.status === 'up-to-date') {
+      updateStatus.value = '当前已是最新版本'
+    }
+  }
+
   window.api.onUpdateAvailable((data) => {
     newVersion.value = data.version
     updateStatus.value = `发现新版本 ${data.version}，正在下载...`

@@ -51,19 +51,24 @@ const api = {
   screenshotCapture: (dataUrl) => ipcRenderer.invoke('screenshot-capture', dataUrl),
   screenshotSave: (dataUrl) => ipcRenderer.invoke('screenshot-save', dataUrl),
   screenshotPin: (dataUrl, rect) => ipcRenderer.invoke('screenshot-pin', dataUrl, rect),
-  screenshotOcr: (dataUrl) => ipcRenderer.invoke('screenshot-ocr', dataUrl),
-  screenshotTranslate: (data) => ipcRenderer.invoke('screenshot-translate', data),
   onScreenshotStart: (cb) => ipcRenderer.on('screenshot-start', () => cb()),
   onScreenshotData: (cb) => ipcRenderer.on('screenshot-data', (_, data) => cb(data)),
   onScreenshotCopy: (cb) => ipcRenderer.on('screenshot-copy', () => cb()),
 
   checkForUpdate: () => ipcRenderer.invoke('check-for-update'),
+  getUpdateState: () => ipcRenderer.invoke('get-update-state'),
   installUpdate: () => ipcRenderer.invoke('install-update'),
   onUpdateAvailable: (cb) => ipcRenderer.on('update-available', (_, data) => cb(data)),
   onUpdateProgress: (cb) => ipcRenderer.on('update-progress', (_, data) => cb(data)),
   onUpdateDownloaded: (cb) => ipcRenderer.on('update-downloaded', (_, data) => cb(data)),
   onUpdateError: (cb) => ipcRenderer.on('update-error', (_, data) => cb(data)),
-  onUpdateNotAvailable: (cb) => ipcRenderer.on('update-not-available', () => cb())
+  onUpdateNotAvailable: (cb) => ipcRenderer.on('update-not-available', () => cb()),
+
+  getReportConfig: () => ipcRenderer.invoke('get-report-config'),
+  saveReportConfig: (config) => ipcRenderer.invoke('save-report-config', config),
+  selectProjectDir: () => ipcRenderer.invoke('select-project-dir'),
+  generateReport: (params) => ipcRenderer.invoke('generate-report', params),
+  exportReport: (report) => ipcRenderer.invoke('export-report', report)
 }
 
 if (process.contextIsolated) {

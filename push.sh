@@ -21,6 +21,6 @@ sed -i '' "s/\"version\": \".*\"/\"version\": \"${NEW_VERSION}\"/" package.json
 git add -A
 git commit -m "release: ${NEW_TAG}" || true
 git tag "$NEW_TAG"
-git push origin master --tags
+git push origin master "$NEW_TAG"
 
 echo "已推送 $NEW_TAG，GitHub Actions 将自动构建打包"

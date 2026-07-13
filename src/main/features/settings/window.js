@@ -4,7 +4,7 @@
  */
 
 import { BrowserWindow, globalShortcut } from 'electron'
-import { appIcon, isMac } from '../../shared/constants'
+import { appIcon } from '../../shared/constants'
 import { subWindowOptions, loadWindowUrl, getPreloadPath } from '../../shared/window-utils'
 import { registerShortcuts } from '../../shortcuts'
 
@@ -22,7 +22,6 @@ export function openSettingsWindow() {
     height: 640,
     title: '设置 - Desktop Cat',
     icon: appIcon,
-    type: isMac ? 'panel' : undefined,
     resizable: false,
     backgroundColor: '#fffaf3',
     ...subWindowOptions(),

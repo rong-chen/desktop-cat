@@ -8,8 +8,6 @@ files:
   - '!electron.vite.config.{js,ts,mjs,cjs}'
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
-asarUnpack:
-  - resources/**
 win:
   executableName: miaozs
   signAndEditExecutable: false
@@ -22,6 +20,7 @@ mac:
   artifactName: ${name}-${version}-${arch}-mac.${ext}
   identity: null
   entitlementsInherit: build/entitlements.mac.plist
+  sign: false
   target:
     - dmg
     - zip

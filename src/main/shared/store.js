@@ -14,6 +14,7 @@ const clipboardFile = join(dataDir, 'clipboard.json')
 const shortcutsFile = join(dataDir, 'shortcuts.json')
 const tasksFile = join(dataDir, 'tasks.json')
 const aiConfigFile = join(dataDir, 'ai-config.json')
+const reportConfigFile = join(dataDir, 'report-config.json')
 
 // 内存中的剪贴板历史
 let clipboardHistory = []
@@ -115,4 +116,23 @@ export function loadAiConfig() {
 /** 保存 AI 配置到本地文件 */
 export function saveAiConfig(config) {
   writeFileSync(aiConfigFile, JSON.stringify(config, null, 2))
+}
+
+const defaultReportConfig = { projects: [], gitUser: '' }
+
+/** 加载报告配置 */
+export function loadReportConfig() {
+  if (existsSync(reportConfigFile)) {
+    try {
+      return { ...defaultReportConfig, ...JSON.parse(readFileSync(reportConfigFile, 'utf-8')) }
+    } catch {
+      return { ...defaultReportConfig }
+    }
+  }
+  return { ...defaultReportConfig }
+}
+
+/** 保存报告配置 */
+export function saveReportConfig(config) {
+  writeFileSync(reportConfigFile, JSON.stringify(config, null, 2))
 }

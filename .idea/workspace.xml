@@ -4,7 +4,25 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fed6c9b4-23aa-4f07-a92e-522162ca7da9" name="更改" comment="项目完成，下一步调试" />
+    <list default="true" id="fed6c9b4-23aa-4f07-a92e-522162ca7da9" name="更改" comment="项目完成，下一步调试">
+      <change beforePath="$PROJECT_DIR$/.github/workflows/build.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/build.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/electron-builder.yml" beforeDir="false" afterPath="$PROJECT_DIR$/electron-builder.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/electron.vite.config.mjs" beforeDir="false" afterPath="$PROJECT_DIR$/electron.vite.config.mjs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/push.sh" beforeDir="false" afterPath="$PROJECT_DIR$/push.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/screenshot/ipc.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/screenshot/ipc.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/screenshot/ocr.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/screenshot/translate.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/settings/window.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/settings/window.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/tray/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/tray/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/features/updater/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/features/updater/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/shared/store.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/shared/store.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preload/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/preload/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/screenshot/Screenshot.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/screenshot/Screenshot.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/renderer/settings/Settings.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/renderer/settings/Settings.vue" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

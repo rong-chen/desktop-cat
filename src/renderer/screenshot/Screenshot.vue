@@ -94,22 +94,6 @@
       <i class="sep"></i>
       <div class="tg acts">
         <button
-          :disabled="ocrLoading"
-          @click="doOcr"
-          @mouseenter="tooltip = '提取文字'"
-          @mouseleave="tooltip = ''"
-        >
-          T
-        </button>
-        <button
-          :disabled="ocrLoading"
-          @click="doTranslate"
-          @mouseenter="tooltip = '翻译'"
-          @mouseleave="tooltip = ''"
-        >
-          译
-        </button>
-        <button
           class="pin"
           @click="doPin"
           @mouseenter="tooltip = '贴图 Ctrl+T'"
@@ -138,16 +122,6 @@
         </button>
       </div>
       <div v-show="tooltip" class="custom-tooltip">{{ tooltip }}</div>
-    </div>
-
-    <!-- OCR / 翻译结果面板 -->
-    <div v-show="ocrResult" class="ocr-panel" :style="ocrPanelStyle" @mousedown.stop>
-      <div class="ocr-header">
-        <span>{{ ocrTitle }}</span>
-        <button @click="copyOcrResult">{{ copyBtnText }}</button>
-        <button @click="doClose">✕</button>
-      </div>
-      <div class="ocr-content" @copy.stop>{{ ocrResult }}</div>
     </div>
   </div>
 </template>
@@ -1016,113 +990,6 @@ function doClose() {
   window.api.screenshotCancel()
 }
 
-const ocrLoading = ref(false)
-const ocrResult = ref('')
-const ocrTitle = ref('提取文字')
-const copyBtnText = ref('复制')
-
-const ocrPanelStyle = computed(() => {
-  const r = selRect.value
-  const panelW = Math.max(300, r.w)
-  let top = r.y + r.h + 50
-  if (top + 150 > screenH) top = r.y - 160
-  if (top < 0) top = 10
-  let left = r.x
-  if (left + panelW > screenW) left = screenW - panelW - 4
-  if (left < 0) left = 4
-  return { left: left + 'px', top: top + 'px', maxWidth: panelW + 'px' }
-})
-
-async function doOcr() {
-  ocrLoading.value = true
-  ocrTitle.value = '提取文字'
-  ocrResult.value = '识别中...'
-  try {
-    const texts = await runLocalOcr()
-    ocrResult.value = texts.length > 0 ? texts.join('\n') : '未识别到文字'
-  } catch (e) {
-    ocrResult.value = '识别失败: ' + e.message
-  }
-  ocrLoading.value = false
-}
-
-async function doTranslate() {
-  ocrLoading.value = true
-  ocrTitle.value = '翻译'
-  ocrResult.value = '识别中...'
-  try {
-    const texts = await runLocalOcr()
-    if (texts.length === 0) {
-      ocrResult.value = '未识别到文字'
-      ocrLoading.value = false
-      return
-    }
-    ocrResult.value = '翻译中...'
-    const transRes = await window.api.screenshotTranslate({ texts, from: 'auto', to: 'zh' })
-    if (transRes.success) {
-      ocrResult.value = transRes.texts.join('\n')
-    } else {
-      ocrResult.value = '翻译失败: ' + transRes.error
-    }
-  } catch (e) {
-    ocrResult.value = '识别失败: ' + e.message
-  }
-  ocrLoading.value = false
-}
-
-let ocrEngineCache = null
-
-async function runLocalOcr() {
-  const path = require('path')
-  const fs = require('fs')
-
-  if (!ocrEngineCache) {
-    const ort = require('onnxruntime-node')
-    const ocr = require('esearch-ocr')
-
-    const appPath = process.resourcesPath || ''
-    const packedModelDir = path.join(appPath, 'onnx')
-    const devModelDir = path.join(process.cwd(), 'resources/onnx')
-    const modelDir = fs.existsSync(path.join(packedModelDir, 'ppocr_keys_v1.txt'))
-      ? packedModelDir
-      : devModelDir
-
-    const enDictContent = fs.readFileSync(path.join(modelDir, 'en_dict.txt'), 'utf-8')
-
-    ocrEngineCache = await ocr.init({
-      det: { input: path.join(modelDir, 'ppocr_det.onnx'), ratio: 0.5 },
-      rec: { input: path.join(modelDir, 'ppocr_rec_en.onnx'), decodeDic: enDictContent, imgh: 32, optimize: { space: false } },
-      ort,
-      ortOption: { executionProviders: [{ name: 'cpu' }] }
-    })
-  }
-
-  const dataUrl = getCompositeDataUrl()
-  const img = new Image()
-  await new Promise((resolve) => {
-    img.onload = resolve
-    img.src = dataUrl
-  })
-
-  const canvas = document.createElement('canvas')
-  canvas.width = img.width
-  canvas.height = img.height
-  const ctx = canvas.getContext('2d')
-  ctx.drawImage(img, 0, 0)
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-
-  const result = await ocrEngineCache.ocr(imageData)
-  return result.columns.flatMap((c) => c.parragraphs).map((p) => p.parse.text)
-}
-
-function copyOcrResult() {
-  if (ocrResult.value) {
-    navigator.clipboard.writeText(ocrResult.value)
-    copyBtnText.value = '已复制'
-    setTimeout(() => { copyBtnText.value = '复制' }, 1500)
-  }
-}
-
 // --- Keyboard ---
 function onKeyDown(e) {
   if (e.key === 'Escape') {
@@ -1130,10 +997,6 @@ function onKeyDown(e) {
     return
   }
   if (e.key === 'Enter' || ((e.ctrlKey || e.metaKey) && e.key === 'c')) {
-    if (ocrResult.value) {
-      copyOcrResult()
-      return
-    }
     if (showEditor.value) {
       doCopy()
       return
@@ -1189,9 +1052,7 @@ onMounted(() => {
   })
   if (toolbarEl.value) toolbarObserver.observe(toolbarEl.value)
   window.api.onScreenshotCopy(() => {
-    if (ocrResult.value) {
-      copyOcrResult()
-    } else if (showEditor.value) {
+    if (showEditor.value) {
       doCopy()
     }
   })
@@ -1436,53 +1297,5 @@ body,
   white-space: nowrap;
   pointer-events: none;
   z-index: 999;
-}
-
-.ocr-panel {
-  position: fixed;
-  z-index: 400;
-  background: #1a1a1a;
-  border: 1px solid #444;
-  border-radius: 6px;
-  padding: 0;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-  min-width: 200px;
-  max-height: 200px;
-  display: flex;
-  flex-direction: column;
-}
-.ocr-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-bottom: 1px solid #333;
-  font-size: 12px;
-  color: #ccc;
-}
-.ocr-header span {
-  flex: 1;
-}
-.ocr-header button {
-  background: #333;
-  border: none;
-  color: #ccc;
-  padding: 2px 8px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 11px;
-}
-.ocr-header button:hover {
-  background: #555;
-}
-.ocr-content {
-  padding: 8px 10px;
-  font-size: 13px;
-  color: #eee;
-  line-height: 1.5;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-  user-select: text;
 }
 </style>
