@@ -3,7 +3,7 @@
  * 使用 node-screenshots 库进行全屏截取
  */
 
-import { screen, nativeImage, dialog, shell } from 'electron'
+import { screen, nativeImage, dialog, shell, globalShortcut } from 'electron'
 import { join } from 'path'
 import { writeFileSync } from 'fs'
 import { tmpdir } from 'os'
@@ -12,8 +12,7 @@ import { getCatWindow } from '../cat/window'
 import {
   createScreenshotWindow,
   getScreenshotWindow,
-  setScreenshotImage,
-  isScreenshotReady
+  setScreenshotImage
 } from './window'
 import {
   getChatHideTimer,
@@ -41,9 +40,6 @@ export function startScreenshot() {
   const chatWin = getChatWindow()
   const catWin = getCatWindow()
 
-  if (catWin && !catWin.isDestroyed()) catWin.setOpacity(0)
-  if (chatWin && !chatWin.isDestroyed()) chatWin.setOpacity(0)
-
   const menuTimer = getChatMenuTimer()
   if (menuTimer) {
     clearTimeout(menuTimer)
@@ -55,78 +51,76 @@ export function startScreenshot() {
     setChatHideTimer(null)
   }
 
-  // 窗口已预创建，立即显示给用户即时反馈
-  if (isScreenshotReady()) {
-    const screenshotWin = getScreenshotWindow()
-    screenshotWin.setAlwaysOnTop(true, 'screen-saver')
-    if (process.platform === 'win32') {
-      screenshotWin.show()
-    } else {
-      screenshotWin.showInactive()
-    }
+  // 先截图（此时 app 窗口还可见，不影响 macOS 窗口层级）
+  const display = screen.getPrimaryDisplay()
+  const { width, height } = display.size
+  const scaleFactor = display.scaleFactor
+
+  let capturedImage
+  let Window
+  try {
+    const nodeScreenshots = require('node-screenshots')
+    const Monitor = nodeScreenshots.Monitor
+    Window = nodeScreenshots.Window
+    const monitors = Monitor.all()
+    const monitor = monitors[0]
+    if (!monitor) return
+
+    // 截图前隐藏自身窗口，避免截到自己
+    if (catWin && !catWin.isDestroyed()) catWin.setOpacity(0)
+    if (chatWin && !chatWin.isDestroyed()) chatWin.setOpacity(0)
+
+    capturedImage = monitor.captureImageSync()
+  } catch {
+    if (catWin && !catWin.isDestroyed()) catWin.setOpacity(1)
+    if (chatWin && !chatWin.isDestroyed()) chatWin.setOpacity(1)
+    requestScreenCapturePermission()
+    return
   }
 
-  setTimeout(() => {
-    const display = screen.getPrimaryDisplay()
-    const { width, height } = display.size
-    const scaleFactor = display.scaleFactor
+  const pngBuffer = capturedImage.toPngSync()
+  const screenshotImg = nativeImage.createFromBuffer(pngBuffer)
+  setScreenshotImage(screenshotImg)
 
-    let capturedImage
-    let Window
-    try {
-      const nodeScreenshots = require('node-screenshots')
-      const Monitor = nodeScreenshots.Monitor
-      Window = nodeScreenshots.Window
-      const monitors = Monitor.all()
-      const monitor = monitors[0]
-      if (!monitor) {
-        if (catWin && !catWin.isDestroyed()) catWin.setOpacity(1)
-        if (chatWin && !chatWin.isDestroyed()) chatWin.setOpacity(1)
-        return
-      }
+  const tmpFile = join(tmpdir(), `desktop-cat-screenshot-${Date.now()}.png`)
+  writeFileSync(tmpFile, pngBuffer)
 
-      capturedImage = monitor.captureImageSync()
-    } catch {
-      if (catWin && !catWin.isDestroyed()) catWin.setOpacity(1)
-      if (chatWin && !chatWin.isDestroyed()) chatWin.setOpacity(1)
-      const screenshotWin = getScreenshotWindow()
-      if (screenshotWin && !screenshotWin.isDestroyed()) screenshotWin.hide()
-      requestScreenCapturePermission()
-      return
+  const allWindows = Window.all()
+  const windowRects = allWindows
+    .filter((w) => w.width() > 0 && w.height() > 0)
+    .map((w) => ({
+      x: w.x(),
+      y: w.y(),
+      w: w.width(),
+      h: w.height()
+    }))
+
+  const screenshotData = { imagePath: tmpFile, scaleFactor, width, height, windowRects }
+
+  // 截图完成后再显示截图窗口
+  let win = getScreenshotWindow()
+  if (!win || win.isDestroyed()) {
+    createScreenshotWindow()
+    win = getScreenshotWindow()
+  }
+  if (win && !win.isDestroyed()) {
+    win.setAlwaysOnTop(true, 'screen-saver')
+    if (process.platform === 'win32') {
+      win.show()
+    } else {
+      win.showInactive()
     }
+    globalShortcut.register('Escape', () => {
+      const w = getScreenshotWindow()
+      if (w && !w.isDestroyed()) w.close()
+    })
 
-    const pngBuffer = capturedImage.toPngSync()
-    const screenshotImg = nativeImage.createFromBuffer(pngBuffer)
-    setScreenshotImage(screenshotImg)
-
-    const tmpFile = join(tmpdir(), `desktop-cat-screenshot-${Date.now()}.png`)
-    writeFileSync(tmpFile, pngBuffer)
-
-    const allWindows = Window.all()
-    const windowRects = allWindows
-      .filter((w) => w.width() > 0 && w.height() > 0)
-      .map((w) => ({
-        x: w.x(),
-        y: w.y(),
-        w: w.width(),
-        h: w.height()
-      }))
-
-    const screenshotData = { imagePath: tmpFile, scaleFactor, width, height, windowRects }
-
-    let win = getScreenshotWindow()
-    if (!win || win.isDestroyed()) {
-      createScreenshotWindow()
-      win = getScreenshotWindow()
-    }
-    if (win && !win.isDestroyed()) {
-      if (win.webContents.isLoading()) {
-        win.webContents.on('did-finish-load', () => {
-          win.webContents.send('screenshot-data', screenshotData)
-        })
-      } else {
+    if (win.webContents.isLoading()) {
+      win.webContents.on('did-finish-load', () => {
         win.webContents.send('screenshot-data', screenshotData)
-      }
+      })
+    } else {
+      win.webContents.send('screenshot-data', screenshotData)
     }
-  }, 16)
+  }
 }

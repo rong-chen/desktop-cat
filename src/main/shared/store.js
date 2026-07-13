@@ -28,21 +28,36 @@ export function setClipboardHistory(history) {
   clipboardHistory = history
 }
 
-/** 初始化数据目录并加载剪贴板历史 */
+/** 剪贴板数据是否已加载完成 */
+let clipboardLoaded = false
+
+export function isClipboardLoaded() {
+  return clipboardLoaded
+}
+
+/** 初始化数据目录并异步加载剪贴板历史（避免阻塞启动） */
 export function loadData() {
   if (!existsSync(dataDir)) {
     mkdirSync(dataDir, { recursive: true })
   }
+  // 异步加载剪贴板数据，不阻塞主进程启动
   if (existsSync(clipboardFile)) {
-    try {
-      const data = JSON.parse(readFileSync(clipboardFile, 'utf-8'))
-      clipboardHistory = data.map(item => {
-        if (!item.type) return { type: 'text', text: item.text, time: item.time }
-        return item
+    const { readFile } = require('fs/promises')
+    readFile(clipboardFile, 'utf-8')
+      .then((content) => {
+        const data = JSON.parse(content)
+        clipboardHistory = data.map((item) => {
+          if (!item.type) return { type: 'text', text: item.text, time: item.time }
+          return item
+        })
+        clipboardLoaded = true
       })
-    } catch (e) {
-      clipboardHistory = []
-    }
+      .catch(() => {
+        clipboardHistory = []
+        clipboardLoaded = true
+      })
+  } else {
+    clipboardLoaded = true
   }
 }
 
