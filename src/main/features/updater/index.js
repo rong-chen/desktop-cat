@@ -1,9 +1,7 @@
 import { autoUpdater } from 'electron-updater'
-import { ipcMain, BrowserWindow, app, shell } from 'electron'
+import { ipcMain, BrowserWindow, app, shell, net } from 'electron'
 import { createWriteStream, existsSync, statSync, unlinkSync, renameSync } from 'fs'
 import { join } from 'path'
-import { get as httpsGet } from 'https'
-import { get as httpGet } from 'http'
 
 let updateInfo = null
 let updateState = { status: 'idle', percent: 0, version: '', error: '' }
@@ -65,15 +63,10 @@ function downloadWithResume(url, fileName, totalSize, retryCount = 0) {
       headers['Range'] = `bytes=${existingSize}-`
     }
 
-    const getter = url.startsWith('https') ? httpsGet : httpGet
-    const req = getter(url, { headers }, (res) => {
-      if (res.statusCode === 302 || res.statusCode === 301) {
-        downloadWithResume(res.headers.location, fileName, totalSize, retryCount)
-          .then(resolve)
-          .catch(reject)
-        return
-      }
+    const request = net.request({ url, redirect: 'follow' })
+    Object.entries(headers).forEach(([k, v]) => request.setHeader(k, v))
 
+    request.on('response', (res) => {
       if (res.statusCode === 416) {
         if (existsSync(tempPath)) unlinkSync(tempPath)
         downloadWithResume(url, fileName, totalSize, retryCount)
@@ -87,14 +80,21 @@ function downloadWithResume(url, fileName, totalSize, retryCount = 0) {
         return
       }
 
-      const actualTotal = totalSize || parseInt(res.headers['content-length'] || '0', 10) + existingSize
-      let transferred = existingSize
+      const contentLength = parseInt(res.headers['content-length'] || '0', 10)
+      const actualTotal = totalSize || (contentLength + existingSize)
 
+      if (actualTotal === 0) {
+        reject(new Error('Cannot determine file size'))
+        return
+      }
+
+      let transferred = existingSize
       const fileStream = createWriteStream(tempPath, { flags: existingSize > 0 ? 'a' : 'w' })
       let lastTime = Date.now()
       let lastTransferred = transferred
 
       res.on('data', (chunk) => {
+        fileStream.write(chunk)
         transferred += chunk.length
         const now = Date.now()
         const elapsed = (now - lastTime) / 1000
@@ -116,18 +116,15 @@ function downloadWithResume(url, fileName, totalSize, retryCount = 0) {
         })
       })
 
-      res.pipe(fileStream)
-
-      fileStream.on('finish', () => {
-        if (transferred >= actualTotal && actualTotal > 0) {
-          renameSync(tempPath, finalPath)
-          resolve(finalPath)
-        } else if (actualTotal === 0) {
-          renameSync(tempPath, finalPath)
-          resolve(finalPath)
-        } else {
-          retryDownload(url, fileName, totalSize, retryCount, resolve, reject)
-        }
+      res.on('end', () => {
+        fileStream.end(() => {
+          if (transferred >= actualTotal) {
+            renameSync(tempPath, finalPath)
+            resolve(finalPath)
+          } else {
+            retryDownload(url, fileName, totalSize, retryCount, resolve, reject)
+          }
+        })
       })
 
       res.on('error', (err) => {
@@ -140,11 +137,12 @@ function downloadWithResume(url, fileName, totalSize, retryCount = 0) {
       })
     })
 
-    req.on('error', (err) => {
+    request.on('error', (err) => {
       retryDownload(url, fileName, totalSize, retryCount, resolve, reject, err)
     })
 
-    downloadAbortController = { abort: () => req.destroy() }
+    downloadAbortController = { abort: () => request.abort() }
+    request.end()
   })
 }
 
