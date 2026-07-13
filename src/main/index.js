@@ -21,6 +21,7 @@ import { setupSettingsIpc } from './features/settings'
 import { setupNotifyIpc } from './features/notify'
 import { setupTasksIpc, scheduleAllTasks, stopAllTasks } from './features/tasks'
 import { setupScreenshotIpc } from './features/screenshot'
+import { createScreenshotWindow } from './features/screenshot/window'
 import { createTray } from './features/tray'
 import { registerShortcuts } from './shortcuts'
 
@@ -58,6 +59,7 @@ app.whenReady().then(async () => {
   setupAllIpc()
   createCatWindow()
   createChatWindow()
+  createScreenshotWindow()
   createTray()
   startClipboardWatch()
   registerShortcuts()

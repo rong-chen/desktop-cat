@@ -21,6 +21,9 @@ export default defineConfig({
       }
     },
     plugins: [vue()],
+    optimizeDeps: {
+      exclude: ['onnxruntime-node', 'esearch-ocr', 'node-screenshots']
+    },
     build: {
       rollupOptions: {
         external: ['onnxruntime-node', 'esearch-ocr', 'path', 'fs'],

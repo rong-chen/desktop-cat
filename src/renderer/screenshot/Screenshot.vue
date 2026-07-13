@@ -115,7 +115,7 @@
           @mouseenter="tooltip = '贴图 Ctrl+T'"
           @mouseleave="tooltip = ''"
         >
-          📌
+          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z" fill="currentColor"/></svg>
         </button>
         <button
           class="ok"
@@ -123,10 +123,10 @@
           @mouseenter="tooltip = '复制 Enter'"
           @mouseleave="tooltip = ''"
         >
-          ✓
+          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" fill="currentColor"/></svg>
         </button>
         <button @click="doSave" @mouseenter="tooltip = '保存 Ctrl+S'" @mouseleave="tooltip = ''">
-          ⤓
+          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="currentColor"/></svg>
         </button>
         <button
           class="no"
@@ -134,7 +134,7 @@
           @mouseenter="tooltip = '关闭 Esc'"
           @mouseleave="tooltip = ''"
         >
-          ✕
+          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" fill="currentColor"/></svg>
         </button>
       </div>
       <div v-show="tooltip" class="custom-tooltip">{{ tooltip }}</div>
@@ -194,6 +194,9 @@ let numberCounter = 1
 let undoStack = []
 let redoStack = []
 let isLoadingState = false
+let windowRects = []
+let hoveredRect = null
+let dragStartPos = null
 
 const palette = ['#ff0000', '#ff8800', '#ffee00', '#00cc44', '#0088ff', '#ffffff', '#000000']
 const toolList = [
@@ -383,7 +386,20 @@ function drawOverlay() {
   ovCtx.clearRect(0, 0, w, h)
   ovCtx.fillStyle = 'rgba(0,0,0,0.45)'
   ovCtx.fillRect(0, 0, w, h)
-  if (phase.value === 'idle') return
+  if (phase.value === 'idle') {
+    if (hoveredRect) {
+      const r = hoveredRect
+      const rx = Math.max(0, r.x) * scaleFactor
+      const ry = Math.max(0, r.y) * scaleFactor
+      const rw = Math.min(r.w, screenW - Math.max(0, r.x)) * scaleFactor
+      const rh = Math.min(r.h, screenH - Math.max(0, r.y)) * scaleFactor
+      ovCtx.clearRect(rx, ry, rw, rh)
+      ovCtx.strokeStyle = '#00cc66'
+      ovCtx.lineWidth = 2
+      ovCtx.strokeRect(rx, ry, rw, rh)
+    }
+    return
+  }
   const r = selRect.value
   ovCtx.clearRect(r.x * scaleFactor, r.y * scaleFactor, r.w * scaleFactor, r.h * scaleFactor)
   ovCtx.strokeStyle = '#0088ff'
@@ -871,6 +887,24 @@ function onMouseMove(e) {
     selection.w = e.clientX - selection.x
     selection.h = e.clientY - selection.y
     drawOverlay()
+  } else if (phase.value === 'idle') {
+    const mx = e.clientX
+    const my = e.clientY
+    let best = null
+    let bestArea = Infinity
+    for (const r of windowRects) {
+      if (mx >= r.x && my >= r.y && mx < r.x + r.w && my < r.y + r.h) {
+        const area = r.w * r.h
+        if (area < bestArea) {
+          bestArea = area
+          best = r
+        }
+      }
+    }
+    if (best !== hoveredRect) {
+      hoveredRect = best
+      drawOverlay()
+    }
   }
 }
 
@@ -881,6 +915,7 @@ function onMouseDown(e) {
   }
   if (e.button !== 0) return
   if (phase.value === 'idle') {
+    dragStartPos = { x: e.clientX, y: e.clientY }
     phase.value = 'selecting'
     selection.x = e.clientX
     selection.y = e.clientY
@@ -893,9 +928,21 @@ function onMouseUp(e) {
   if (e.button !== 0) return
   if (phase.value === 'selecting') {
     if (Math.abs(selection.w) < 3 || Math.abs(selection.h) < 3) {
+      if (hoveredRect) {
+        selection.x = Math.max(0, hoveredRect.x)
+        selection.y = Math.max(0, hoveredRect.y)
+        selection.w = Math.min(hoveredRect.w, screenW - selection.x)
+        selection.h = Math.min(hoveredRect.h, screenH - selection.y)
+        phase.value = 'selected'
+        hoveredRect = null
+        dragStartPos = null
+        initFabric()
+        return
+      }
       phase.value = 'idle'
       selection.w = 0
       selection.h = 0
+      dragStartPos = null
       drawOverlay()
       return
     }
@@ -908,6 +955,8 @@ function onMouseUp(e) {
       selection.h = -selection.h
     }
     phase.value = 'selected'
+    hoveredRect = null
+    dragStartPos = null
     initFabric()
   }
 }
@@ -934,6 +983,7 @@ function onRightClick() {
     phase.value = 'idle'
     selection.w = 0
     selection.h = 0
+    hoveredRect = null
     numberCounter = 1
     if (fabricCanvas) {
       fabricCanvas.dispose()
@@ -1149,6 +1199,9 @@ onMounted(() => {
     scaleFactor = data.scaleFactor
     screenW = data.width
     screenH = data.height
+    windowRects = data.windowRects || []
+    hoveredRect = null
+    dragStartPos = null
     const img = new Image()
     img.onload = () => {
       const bg = bgCanvas.value
@@ -1165,9 +1218,13 @@ onMounted(() => {
       ov.style.height = data.height + 'px'
       ovCtx = ov.getContext('2d')
       drawOverlay()
-      window.api.screenshotShow() //显示
+      window.api.screenshotShow()
     }
-    img.src = data.imageDataUrl
+    if (data.imagePath) {
+      img.src = 'file://' + data.imagePath
+    } else {
+      img.src = data.imageDataUrl
+    }
   })
 })
 onUnmounted(() => {

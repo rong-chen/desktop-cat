@@ -8,12 +8,10 @@ import { loadShortcuts } from './shared/store'
 import { getCatWindow } from './features/cat/window'
 import { openSettingsWindow } from './features/settings/window'
 import { openClipboardWindow } from './features/clipboard/window'
+import { openJsonViewerWindow } from './features/json-viewer/window'
+import { openTasksWindow } from './features/tasks/window'
 import { startScreenshot } from './features/screenshot/capture'
 
-/**
- * 注册全局快捷键
- * 包括：显示/隐藏猫咪、打开设置、打开剪贴板、截图
- */
 export function registerShortcuts() {
   globalShortcut.unregisterAll()
   const shortcuts = loadShortcuts()
@@ -41,6 +39,18 @@ export function registerShortcuts() {
   if (shortcuts.screenshot) {
     globalShortcut.register(shortcuts.screenshot, () => {
       startScreenshot()
+    })
+  }
+
+  if (shortcuts.openJsonViewer) {
+    globalShortcut.register(shortcuts.openJsonViewer, () => {
+      openJsonViewerWindow()
+    })
+  }
+
+  if (shortcuts.openTasks) {
+    globalShortcut.register(shortcuts.openTasks, () => {
+      openTasksWindow()
     })
   }
 }

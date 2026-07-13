@@ -4,9 +4,17 @@
  */
 
 import { screen, nativeImage, systemPreferences, dialog, shell } from 'electron'
+import { join } from 'path'
+import { writeFileSync } from 'fs'
+import { tmpdir } from 'os'
 import { getChatWindow } from '../chat/window'
 import { getCatWindow } from '../cat/window'
-import { createScreenshotWindow, getScreenshotWindow, setScreenshotImage } from './window'
+import {
+  createScreenshotWindow,
+  getScreenshotWindow,
+  setScreenshotImage,
+  isScreenshotReady
+} from './window'
 import {
   getChatHideTimer,
   setChatHideTimer,
@@ -39,58 +47,81 @@ export function startScreenshot() {
     requestScreenCapturePermission()
     return
   }
-  const chatWin = getChatWindow() // 获取聊天气泡窗口实例
-  const catWin = getCatWindow() // 获取桌面猫咪窗口实例
+  const chatWin = getChatWindow()
+  const catWin = getCatWindow()
 
-  if (catWin && !catWin.isDestroyed()) catWin.setOpacity(0) // 猫咪窗口设为透明
-  if (chatWin && !chatWin.isDestroyed()) chatWin.setOpacity(0) // 聊天气泡设为透明
+  if (catWin && !catWin.isDestroyed()) catWin.setOpacity(0)
+  if (chatWin && !chatWin.isDestroyed()) chatWin.setOpacity(0)
 
-  const menuTimer = getChatMenuTimer() // 获取聊天菜单定时器
+  const menuTimer = getChatMenuTimer()
   if (menuTimer) {
-    clearTimeout(menuTimer) // 清除菜单定时器，避免截图期间弹出菜单
-    setChatMenuTimer(null) // 重置菜单定时器引用为空
+    clearTimeout(menuTimer)
+    setChatMenuTimer(null)
   }
-  const hideTimer = getChatHideTimer() // 获取聊天隐藏定时器
+  const hideTimer = getChatHideTimer()
   if (hideTimer) {
-    clearTimeout(hideTimer) // 清除隐藏定时器，避免截图期间触发隐藏逻辑
-    setChatHideTimer(null) // 重置隐藏定时器引用为空
+    clearTimeout(hideTimer)
+    setChatHideTimer(null)
   }
 
-  // 延迟 200ms 等待系统合成器刷新帧，确保窗口从屏幕画面中消失
-  setTimeout(() => {
-    const display = screen.getPrimaryDisplay() // 获取主显示器信息
-    const { width, height } = display.size // 解构屏幕逻辑分辨率
-    const scaleFactor = display.scaleFactor // 获取屏幕缩放因子（Retina 屏为 2）
+  // 窗口已预创建，立即显示给用户即时反馈
+  if (isScreenshotReady()) {
+    const screenshotWin = getScreenshotWindow()
+    screenshotWin.setAlwaysOnTop(true, 'screen-saver')
+    if (process.platform === 'win32') {
+      screenshotWin.show()
+    } else {
+      screenshotWin.showInactive()
+    }
+  }
 
-    const { Monitor } = require('node-screenshots') // 动态加载原生截图库
-    const monitors = Monitor.all() // 获取所有显示器列表
-    const monitor = monitors[0] // 取主显示器
+  setTimeout(() => {
+    const display = screen.getPrimaryDisplay()
+    const { width, height } = display.size
+    const scaleFactor = display.scaleFactor
+
+    const { Monitor, Window } = require('node-screenshots')
+    const monitors = Monitor.all()
+    const monitor = monitors[0]
     if (!monitor) {
-      // 没有可用显示器时恢复窗口并退出
-      if (catWin && !catWin.isDestroyed()) catWin.setOpacity(1) // 恢复猫咪窗口
-      if (chatWin && !chatWin.isDestroyed()) chatWin.setOpacity(1) // 恢复聊天气泡
+      if (catWin && !catWin.isDestroyed()) catWin.setOpacity(1)
+      if (chatWin && !chatWin.isDestroyed()) chatWin.setOpacity(1)
       return
     }
 
-    const capturedImage = monitor.captureImageSync() // 同步捕获屏幕图像
-    const pngBuffer = capturedImage.toPngSync() // 将图像转为 PNG Buffer
-    const screenshotImg = nativeImage.createFromBuffer(pngBuffer) // 创建 Electron nativeImage 对象
-    setScreenshotImage(screenshotImg) // 缓存截图供后续裁剪使用
-    const imageDataUrl = screenshotImg.toDataURL() // 转为 Data URL 便于传给渲染进程
+    const capturedImage = monitor.captureImageSync()
+    const pngBuffer = capturedImage.toPngSync()
+    const screenshotImg = nativeImage.createFromBuffer(pngBuffer)
+    setScreenshotImage(screenshotImg)
 
-    const screenshotData = { imageDataUrl, scaleFactor, width, height } // 组装截图数据
+    const tmpFile = join(tmpdir(), `desktop-cat-screenshot-${Date.now()}.png`)
+    writeFileSync(tmpFile, pngBuffer)
 
-    let screenshotWin = getScreenshotWindow() // 获取已有的截图窗口
-    if (!screenshotWin || screenshotWin.isDestroyed()) {
-      // 窗口不存在或已销毁
-      createScreenshotWindow() // 创建新的截图窗口
-      screenshotWin = getScreenshotWindow() // 获取新创建的窗口实例
-      screenshotWin.webContents.on('did-finish-load', () => {
-        // 等待窗口加载完成
-        screenshotWin.webContents.send('screenshot-data', screenshotData) // 发送截图数据到渲染进程
-      })
-    } else {
-      screenshotWin.webContents.send('screenshot-data', screenshotData) // 窗口已存在，直接发送数据
+    const allWindows = Window.all()
+    const windowRects = allWindows
+      .filter((w) => w.width() > 0 && w.height() > 0)
+      .map((w) => ({
+        x: w.x(),
+        y: w.y(),
+        w: w.width(),
+        h: w.height()
+      }))
+
+    const screenshotData = { imagePath: tmpFile, scaleFactor, width, height, windowRects }
+
+    let win = getScreenshotWindow()
+    if (!win || win.isDestroyed()) {
+      createScreenshotWindow()
+      win = getScreenshotWindow()
     }
-  }, 200)
+    if (win && !win.isDestroyed()) {
+      if (win.webContents.isLoading()) {
+        win.webContents.on('did-finish-load', () => {
+          win.webContents.send('screenshot-data', screenshotData)
+        })
+      } else {
+        win.webContents.send('screenshot-data', screenshotData)
+      }
+    }
+  }, 16)
 }

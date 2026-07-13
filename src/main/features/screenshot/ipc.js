@@ -16,8 +16,14 @@ export function setupScreenshotIpc() {
   ipcMain.on('screenshot-show', () => {
     const win = getScreenshotWindow()
     if (win && !win.isDestroyed()) {
-      win.setAlwaysOnTop(true, 'screen-saver')
-      win.showInactive()
+      if (!win.isVisible()) {
+        win.setAlwaysOnTop(true, 'screen-saver')
+        if (process.platform === 'win32') {
+          win.show()
+        } else {
+          win.showInactive()
+        }
+      }
       globalShortcut.register('Escape', () => {
         const w = getScreenshotWindow()
         if (w && !w.isDestroyed()) w.close()
@@ -86,6 +92,7 @@ export function setupScreenshotIpc() {
       skipTaskbar: true,
       transparent: true,
       hasShadow: true,
+      roundedCorners: false,
       webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true }
     })
 

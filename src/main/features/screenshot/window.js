@@ -9,15 +9,19 @@ import { join } from 'path'
 import { getPreloadPath } from '../../shared/window-utils'
 import { getChatWindow } from '../chat/window'
 import { getCatWindow } from '../cat/window'
-import { getHasActiveText, scheduleChatHide } from '../chat/ai-service'
 
 let screenshotWindow = null
 let screenshotImage = null
+let screenshotReady = false
 
-/** 创建截图窗口（全屏透明） */
+/** 创建截图窗口 */
 export function createScreenshotWindow() {
+  if (screenshotWindow && !screenshotWindow.isDestroyed()) return
+
   const display = screen.getPrimaryDisplay()
   const { width, height } = display.size
+
+  const isWin = process.platform === 'win32'
 
   screenshotWindow = new BrowserWindow({
     width,
@@ -34,7 +38,7 @@ export function createScreenshotWindow() {
     fullscreenable: false,
     enableLargerThanScreen: false,
     movable: false,
-    focusable: false,
+    focusable: isWin,
     webPreferences: {
       preload: getPreloadPath(),
       sandbox: false,
@@ -51,17 +55,27 @@ export function createScreenshotWindow() {
     screenshotWindow.loadFile(join(__dirname, '../renderer/screenshot/index.html'))
   }
 
-  // 窗口关闭时清理资源并恢复猫咪窗口
+  screenshotWindow.webContents.on('did-finish-load', () => {
+    screenshotReady = true
+  })
+
   screenshotWindow.on('closed', () => {
     globalShortcut.unregister('Escape')
     globalShortcut.unregister('CommandOrControl+C')
     screenshotWindow = null
     screenshotImage = null
+    screenshotReady = false
     const catWin = getCatWindow()
     if (catWin && !catWin.isDestroyed()) catWin.setOpacity(1)
     const chatWin = getChatWindow()
     if (chatWin && !chatWin.isDestroyed()) chatWin.setOpacity(1)
+    setTimeout(() => createScreenshotWindow(), 300)
   })
+}
+
+/** 截图窗口是否已加载完成可用 */
+export function isScreenshotReady() {
+  return screenshotReady && screenshotWindow && !screenshotWindow.isDestroyed()
 }
 
 /** 获取截图窗口实例 */

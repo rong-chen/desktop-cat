@@ -3,9 +3,10 @@
  * 提供 AI 模型配置和全局快捷键自定义界面
  */
 
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, globalShortcut } from 'electron'
 import { appIcon, isMac } from '../../shared/constants'
 import { subWindowOptions, loadWindowUrl, getPreloadPath } from '../../shared/window-utils'
+import { registerShortcuts } from '../../shortcuts'
 
 let settingsWindow = null
 
@@ -33,8 +34,11 @@ export function openSettingsWindow() {
 
   loadWindowUrl(settingsWindow, 'settings/index.html')
 
+  globalShortcut.unregisterAll()
+
   settingsWindow.on('closed', () => {
     settingsWindow = null
+    registerShortcuts()
   })
 }
 

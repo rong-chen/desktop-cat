@@ -3,19 +3,26 @@
  * 处理快捷键的读取和保存
  */
 
-import { ipcMain } from 'electron'
+import { ipcMain, globalShortcut } from 'electron'
 import { loadShortcuts, saveShortcuts } from '../../shared/store'
 import { registerShortcuts } from '../../shortcuts'
 
-/** 注册设置相关 IPC 处理器 */
 export function setupSettingsIpc() {
-  // 获取当前快捷键配置
   ipcMain.handle('get-shortcuts', () => loadShortcuts())
 
-  // 保存快捷键配置并重新注册
   ipcMain.handle('save-shortcuts', (_, shortcuts) => {
     saveShortcuts(shortcuts)
     registerShortcuts()
     return true
+  })
+
+  ipcMain.handle('check-shortcut', (_, accelerator) => {
+    if (!accelerator) return { available: true }
+    try {
+      const registered = globalShortcut.isRegistered(accelerator)
+      return { available: !registered }
+    } catch {
+      return { available: false, error: '无效的快捷键' }
+    }
   })
 }

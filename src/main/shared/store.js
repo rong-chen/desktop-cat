@@ -35,7 +35,11 @@ export function loadData() {
   }
   if (existsSync(clipboardFile)) {
     try {
-      clipboardHistory = JSON.parse(readFileSync(clipboardFile, 'utf-8'))
+      const data = JSON.parse(readFileSync(clipboardFile, 'utf-8'))
+      clipboardHistory = data.map(item => {
+        if (!item.type) return { type: 'text', text: item.text, time: item.time }
+        return item
+      })
     } catch (e) {
       clipboardHistory = []
     }

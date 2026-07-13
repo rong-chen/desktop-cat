@@ -15,8 +15,10 @@ export const appIcon = join(__dirname, '../../resources/icon.png')
 export const defaultShortcuts = {
   toggleCat: 'CommandOrControl+Shift+C',
   openSettings: 'CommandOrControl+Shift+,',
-  openClipboard: 'CommandOrControl+Shift+V',
-  screenshot: 'CommandOrControl+Shift+A'
+  screenshot: 'F1',
+  openClipboard: 'F2',
+  openJsonViewer: 'F3',
+  openTasks: 'F4'
 }
 
 // AI 配置默认值

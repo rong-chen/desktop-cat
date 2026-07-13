@@ -18,9 +18,13 @@
         class="clipboard-item"
         v-for="(item, index) in filteredList"
         :key="item.time"
-        @click="copy(item, $event)"
+        @click="copy(item)"
+        @dblclick.stop="openPreview(item)"
       >
-        <div class="item-text">{{ item.text }}</div>
+        <div class="item-text" v-if="item.type !== 'image'">{{ item.text }}</div>
+        <div class="item-image" v-else>
+          <img :src="item.dataUrl" alt="图片" />
+        </div>
         <div class="item-footer">
           <span class="item-time">{{ formatTime(item.time) }}</span>
           <span class="copy-tip" v-if="item.copied">已复制</span>
@@ -31,6 +35,15 @@
         暂无记录
       </div>
     </div>
+
+    <!-- 图片预览弹层 -->
+    <div class="preview-overlay" v-if="previewItem" @click="closePreview">
+      <div class="preview-content" @click.stop>
+        <img v-if="previewItem.type === 'image'" :src="previewItem.dataUrl" alt="预览" />
+        <pre v-else>{{ previewItem.text }}</pre>
+        <button class="preview-close" @click="closePreview">关闭</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -39,12 +52,15 @@ import { ref, computed, onMounted } from 'vue'
 
 const history = ref([])
 const search = ref('')
+const previewItem = ref(null)
 
 const filteredList = computed(() => {
   if (!search.value) return history.value
-  return history.value.filter(item =>
-    item.text.toLowerCase().includes(search.value.toLowerCase())
-  )
+  const kw = search.value.toLowerCase()
+  return history.value.filter(item => {
+    if (item.type === 'image') return false
+    return item.text.toLowerCase().includes(kw)
+  })
 })
 
 onMounted(async () => {
@@ -57,10 +73,26 @@ function formatTime(ts) {
   return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-async function copy(item, e) {
-  await window.api.copyClipboardItem(item.text)
+async function copy(item) {
+  if (item.type === 'image') {
+    await window.api.copyClipboardItem({ type: 'image', dataUrl: item.dataUrl })
+  } else {
+    await window.api.copyClipboardItem(item.text)
+  }
   item.copied = true
   setTimeout(() => { item.copied = false }, 1500)
+}
+
+function openPreview(item) {
+  if (item.type === 'image') {
+    window.api.openImagePreview(item.dataUrl)
+  } else {
+    previewItem.value = item
+  }
+}
+
+function closePreview() {
+  previewItem.value = null
 }
 
 async function deleteItem(index) {
@@ -191,6 +223,13 @@ body {
   word-break: break-all;
 }
 
+.item-image img {
+  max-width: 100%;
+  max-height: 120px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
 .item-footer {
   display: flex;
   align-items: center;
@@ -201,6 +240,15 @@ body {
 .item-time {
   font-size: 10px;
   color: #8a7a6a;
+}
+
+.item-type-tag {
+  font-size: 9px;
+  color: #6a8a5a;
+  background: #e8f4e0;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 6px;
 }
 
 .item-delete {
@@ -227,5 +275,60 @@ body {
   padding: 40px;
   color: #8a7a6a;
   font-size: 13px;
+}
+
+/* 预览弹层 */
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.preview-content {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  max-width: 90%;
+  max-height: 80%;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.preview-content img {
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.preview-content pre {
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 60vh;
+  overflow: auto;
+  width: 100%;
+}
+
+.preview-close {
+  padding: 6px 16px;
+  font-size: 12px;
+  border: 1px solid #d0b798;
+  border-radius: 6px;
+  background: #fff;
+  color: #5a4a3a;
+  cursor: pointer;
+}
+
+.preview-close:hover {
+  background: #f0e6d6;
 }
 </style>

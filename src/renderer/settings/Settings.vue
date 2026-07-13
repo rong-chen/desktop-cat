@@ -10,11 +10,12 @@
           <label>{{ item.label }}</label>
           <div
             class="shortcut-input"
-            :class="{ recording: recording === key }"
+            :class="{ recording: recording === key, conflict: shortcutStatus[key] }"
             @click="startRecording(key)"
           >
             {{ recording === key ? '按下快捷键...' : item.value || '未设置' }}
           </div>
+          <span v-if="shortcutStatus[key]" class="conflict-tip">{{ shortcutStatus[key] }}</span>
           <button class="clear-btn" @click="clearShortcut(key)">清除</button>
         </div>
       </div>
@@ -85,12 +86,16 @@
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 
 const shortcuts = ref({
+  screenshot: { label: '截图 (F1)', value: '' },
+  openClipboard: { label: '剪贴板 (F2)', value: '' },
+  openJsonViewer: { label: 'JSON 查看器 (F3)', value: '' },
+  openTasks: { label: '定时任务 (F4)', value: '' },
   toggleCat: { label: '显示/隐藏猫咪', value: '' },
-  openSettings: { label: '打开设置', value: '' },
-  openClipboard: { label: '打开剪贴板', value: '' }
+  openSettings: { label: '打开设置', value: '' }
 })
 
 const recording = ref(null)
+const shortcutStatus = ref({})
 
 const ai = reactive({
   mode: 'off',
@@ -138,13 +143,39 @@ function onKeyDown(e) {
   const key = e.key
   if (!['Control', 'Meta', 'Alt', 'Shift'].includes(key)) {
     parts.push(key.length === 1 ? key.toUpperCase() : key)
-    shortcuts.value[recording.value].value = parts.join('+')
+    const accelerator = parts.join('+')
+    const currentKey = recording.value
+    shortcuts.value[currentKey].value = accelerator
     recording.value = null
+    checkShortcutConflict(currentKey, accelerator)
+  }
+}
+
+async function checkShortcutConflict(key, accelerator) {
+  if (!accelerator) {
+    shortcutStatus.value[key] = null
+    return
+  }
+  // 检查是否和自己的其他快捷键冲突
+  for (const k in shortcuts.value) {
+    if (k !== key && shortcuts.value[k].value === accelerator) {
+      shortcutStatus.value[key] = '与「' + shortcuts.value[k].label + '」冲突'
+      return
+    }
+  }
+  const result = await window.api.checkShortcut(accelerator)
+  if (result.error) {
+    shortcutStatus.value[key] = result.error
+  } else if (!result.available) {
+    shortcutStatus.value[key] = '已被其他程序占用'
+  } else {
+    shortcutStatus.value[key] = null
   }
 }
 
 function clearShortcut(key) {
   shortcuts.value[key].value = ''
+  shortcutStatus.value[key] = null
 }
 
 async function saveShortcuts() {
@@ -251,6 +282,17 @@ body {
 .shortcut-input.recording {
   border-color: #b08968;
   background: #f5ede3;
+}
+
+.shortcut-input.conflict {
+  border-color: #e74c3c;
+  background: #fdf0ef;
+}
+
+.conflict-tip {
+  font-size: 11px;
+  color: #e74c3c;
+  white-space: nowrap;
 }
 
 .clear-btn {

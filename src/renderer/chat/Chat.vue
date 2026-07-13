@@ -1,7 +1,7 @@
 <template>
   <div class="chat-wrap" :class="['place-' + placement]">
     <div ref="bubbleRef" class="bubble" @mouseenter="onEnter" @mouseleave="onLeave">
-      <div class="bubble-text" v-if="text">{{ text }}</div>
+      <div v-if="text" class="bubble-text">{{ text }}</div>
       <div class="menu-row" :class="{ 'has-text': !!text }">
         <div class="menu-item" @click="openScreenshot">
           <Icon icon="mdi:crop" :width="20" />
@@ -33,6 +33,8 @@ addCollection(mdiIcons)
 const text = ref('')
 const placement = ref('top')
 const bubbleRef = ref(null)
+let hovered = false
+let leaveTimer = null
 
 onMounted(() => {
   window.api.onChatUpdate((data) => {
@@ -50,14 +52,25 @@ onMounted(() => {
 })
 
 function onEnter() {
+  if (leaveTimer) {
+    clearTimeout(leaveTimer)
+    leaveTimer = null
+  }
+  if (hovered) return
+  hovered = true
   window.api.setIgnoreMouse(false)
   window.api.setChatMode('menu')
   window.api.pauseChatHide()
 }
 
 function onLeave() {
-  window.api.setIgnoreMouse(true)
-  window.api.resumeChatHide()
+  if (leaveTimer) clearTimeout(leaveTimer)
+  leaveTimer = setTimeout(() => {
+    leaveTimer = null
+    hovered = false
+    window.api.setIgnoreMouse(true)
+    window.api.resumeChatHide()
+  }, 50)
 }
 
 function openSettings() {
