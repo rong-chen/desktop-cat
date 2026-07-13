@@ -78,12 +78,22 @@ export function setupScreenshotIpc() {
       win.close()
     }
 
+    // 确保贴图窗口不被任务栏遮挡
+    const display = screen.getPrimaryDisplay()
+    const workArea = display.workArea
+    let pinX = rect.x
+    let pinY = rect.y
+    if (pinY + rect.h > workArea.y + workArea.height) {
+      pinY = workArea.y + workArea.height - rect.h
+    }
+    if (pinY < workArea.y) pinY = workArea.y
+
     // 创建贴图窗口，大小和位置与选区一致
     const pinWin = new BrowserWindow({
       width: rect.w,
       height: rect.h,
-      x: rect.x,
-      y: rect.y,
+      x: pinX,
+      y: pinY,
       frame: false,
       alwaysOnTop: true,
       resizable: true,

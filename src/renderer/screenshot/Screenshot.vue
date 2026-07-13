@@ -154,6 +154,7 @@ let fabricCanvas = null
 let scaleFactor = 1
 let screenW = 0
 let screenH = 0
+let workAreaBottom = 0
 
 const phase = ref('idle')
 const mousePos = reactive({ x: 0, y: 0 })
@@ -300,7 +301,7 @@ const toolbarStyle = computed(() => {
   const tw = toolbarW.value
 
   let top = r.y + r.h + 8
-  if (top + 40 > screenH) top = r.y - 48
+  if (top + 40 > workAreaBottom) top = r.y - 48
   if (top < 0) top = r.y + r.h - 48
 
   let left = r.x
@@ -1060,6 +1061,8 @@ onMounted(() => {
     scaleFactor = data.scaleFactor
     screenW = data.width
     screenH = data.height
+    const wa = data.workArea
+    workAreaBottom = wa ? wa.y + wa.height : screenH
     windowRects = data.windowRects || []
     hoveredRect = null
     dragStartPos = null

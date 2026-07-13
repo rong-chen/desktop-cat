@@ -66,6 +66,7 @@ export function startScreenshot() {
   const display = screen.getPrimaryDisplay()
   const { width, height } = display.size
   const scaleFactor = display.scaleFactor
+  const workArea = display.workArea
 
   let capturedImage
   let Window
@@ -105,7 +106,7 @@ export function startScreenshot() {
       h: w.height()
     }))
 
-  const screenshotData = { imagePath: tmpFile, scaleFactor, width, height, windowRects }
+  const screenshotData = { imagePath: tmpFile, scaleFactor, width, height, workArea, windowRects }
 
   // 截图完成后再显示截图窗口
   let win = getScreenshotWindow()
