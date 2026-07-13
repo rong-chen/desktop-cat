@@ -3,7 +3,7 @@
  * 使用 node-screenshots 库进行全屏截取
  */
 
-import { screen, nativeImage, dialog, shell, globalShortcut } from 'electron'
+import { screen, nativeImage, dialog, shell, globalShortcut, systemPreferences } from 'electron'
 import { join } from 'path'
 import { writeFileSync } from 'fs'
 import { tmpdir } from 'os'
@@ -36,7 +36,18 @@ async function requestScreenCapturePermission() {
   }
 }
 
+function hasScreenCapturePermission() {
+  if (process.platform !== 'darwin') return true
+  const status = systemPreferences.getMediaAccessStatus('screen')
+  return status === 'granted'
+}
+
 export function startScreenshot() {
+  if (!hasScreenCapturePermission()) {
+    requestScreenCapturePermission()
+    return
+  }
+
   const chatWin = getChatWindow()
   const catWin = getCatWindow()
 
@@ -74,7 +85,6 @@ export function startScreenshot() {
   } catch {
     if (catWin && !catWin.isDestroyed()) catWin.setOpacity(1)
     if (chatWin && !chatWin.isDestroyed()) chatWin.setOpacity(1)
-    requestScreenCapturePermission()
     return
   }
 
