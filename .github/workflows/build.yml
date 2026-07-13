@@ -51,6 +51,13 @@ jobs:
         run: npm run build:${{ matrix.platform }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Ad-hoc codesign (macOS)
+        if: matrix.platform == 'mac'
+        run: |
+          find dist -name "*.app" -exec codesign --force --deep --sign - {} \;
+          find dist -name "*.dmg" -exec codesign --force --sign - {} \;
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -61,6 +68,8 @@ jobs:
             dist/*.zip
             dist/*.exe
             dist/*-setup.*
+            dist/*.blockmap
+            dist/*.yml
 
   release:
     needs: build
@@ -80,5 +89,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
-          draft: true
+          draft: false
           generate_release_notes: true

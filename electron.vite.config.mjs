@@ -1,6 +1,9 @@
 import { resolve } from 'path'
 import { defineConfig } from 'electron-vite'
 import vue from '@vitejs/plugin-vue'
+import { readFileSync } from 'fs'
+
+const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 
 export default defineConfig({
   main: {
@@ -21,6 +24,9 @@ export default defineConfig({
       }
     },
     plugins: [vue()],
+    define: {
+      __APP_VERSION__: JSON.stringify(pkg.version)
+    },
     optimizeDeps: {
       exclude: ['onnxruntime-node', 'esearch-ocr', 'node-screenshots']
     },

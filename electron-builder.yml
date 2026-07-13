@@ -18,8 +18,11 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
-  identity: null
+  identity: "-"
   entitlementsInherit: build/entitlements.mac.plist
+  target:
+    - dmg
+    - zip
   extendInfo:
     LSUIElement: true
     NSCameraUsageDescription: Application requests access to the device's camera.
@@ -41,7 +44,8 @@ appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
 publish:
-  provider: generic
-  url: https://example.com/auto-updates
+  provider: github
+  owner: rong-chen
+  repo: desktop-cat
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/

@@ -55,7 +55,15 @@ const api = {
   screenshotTranslate: (data) => ipcRenderer.invoke('screenshot-translate', data),
   onScreenshotStart: (cb) => ipcRenderer.on('screenshot-start', () => cb()),
   onScreenshotData: (cb) => ipcRenderer.on('screenshot-data', (_, data) => cb(data)),
-  onScreenshotCopy: (cb) => ipcRenderer.on('screenshot-copy', () => cb())
+  onScreenshotCopy: (cb) => ipcRenderer.on('screenshot-copy', () => cb()),
+
+  checkForUpdate: () => ipcRenderer.invoke('check-for-update'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  onUpdateAvailable: (cb) => ipcRenderer.on('update-available', (_, data) => cb(data)),
+  onUpdateProgress: (cb) => ipcRenderer.on('update-progress', (_, data) => cb(data)),
+  onUpdateDownloaded: (cb) => ipcRenderer.on('update-downloaded', (_, data) => cb(data)),
+  onUpdateError: (cb) => ipcRenderer.on('update-error', (_, data) => cb(data)),
+  onUpdateNotAvailable: (cb) => ipcRenderer.on('update-not-available', () => cb())
 }
 
 if (process.contextIsolated) {

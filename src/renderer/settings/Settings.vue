@@ -79,6 +79,37 @@
         <button class="save-btn" @click="saveAi">保存 AI 配置</button>
       </div>
     </div>
+
+    <div class="settings-section">
+      <div class="settings-header">
+        <h2>关于 / 更新</h2>
+      </div>
+      <div class="settings-content">
+        <div class="form-row">
+          <label>当前版本</label>
+          <span class="version-text">{{ appVersion }}</span>
+        </div>
+        <div class="form-row">
+          <label>更新状态</label>
+          <span class="update-status">{{ updateStatus }}</span>
+        </div>
+        <div v-if="updateProgress > 0 && updateProgress < 100" class="form-row">
+          <label>下载进度</label>
+          <div class="progress-bar">
+            <div class="progress-fill" :style="{ width: updateProgress + '%' }"></div>
+          </div>
+          <span class="progress-text">{{ updateProgress.toFixed(1) }}%</span>
+        </div>
+        <div class="form-row">
+          <button v-if="updateDownloaded" class="save-btn" @click="installUpdate">
+            立即安装 {{ newVersion }}
+          </button>
+          <button v-else class="save-btn" @click="checkUpdate" :disabled="checking">
+            {{ checking ? '检查中...' : '检查更新' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -109,6 +140,13 @@ const ai = reactive({
 
 const showKey = ref(false)
 
+const appVersion = ref(__APP_VERSION__ || '未知')
+const updateStatus = ref('未检查')
+const updateProgress = ref(0)
+const updateDownloaded = ref(false)
+const newVersion = ref('')
+const checking = ref(false)
+
 onMounted(async () => {
   const saved = await window.api.getShortcuts()
   for (const key in saved) {
@@ -121,6 +159,27 @@ onMounted(async () => {
   Object.assign(ai, aiConfig)
 
   document.addEventListener('keydown', onKeyDown)
+
+  window.api.onUpdateAvailable((data) => {
+    newVersion.value = data.version
+    updateStatus.value = `发现新版本 ${data.version}，正在下载...`
+  })
+  window.api.onUpdateNotAvailable(() => {
+    updateStatus.value = '当前已是最新版本'
+  })
+  window.api.onUpdateProgress((data) => {
+    updateProgress.value = data.percent
+  })
+  window.api.onUpdateDownloaded((data) => {
+    updateDownloaded.value = true
+    newVersion.value = data?.version || newVersion.value
+    updateStatus.value = `新版本 ${newVersion.value} 已下载完成`
+    updateProgress.value = 100
+  })
+  window.api.onUpdateError((data) => {
+    updateStatus.value = `更新失败: ${data.message}`
+    checking.value = false
+  })
 })
 
 onUnmounted(() => {
@@ -188,6 +247,18 @@ async function saveShortcuts() {
 
 async function saveAi() {
   await window.api.saveAiConfig({ ...ai })
+}
+
+async function checkUpdate() {
+  checking.value = true
+  updateStatus.value = '检查中...'
+  updateProgress.value = 0
+  await window.api.checkForUpdate()
+  checking.value = false
+}
+
+function installUpdate() {
+  window.api.installUpdate()
 }
 </script>
 
@@ -430,5 +501,41 @@ body {
 
 .save-btn:hover {
   background: #b8a080;
+}
+
+.save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.version-text {
+  font-size: 13px;
+  color: #5a4a3a;
+}
+
+.update-status {
+  font-size: 12px;
+  color: #7a6a5a;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: #e8ddd0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #b08968;
+  transition: width 0.3s;
+}
+
+.progress-text {
+  font-size: 11px;
+  color: #7a6a5a;
+  min-width: 45px;
+  text-align: right;
 }
 </style>

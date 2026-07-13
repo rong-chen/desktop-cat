@@ -3,7 +3,7 @@
  * 使用 node-screenshots 库进行全屏截取
  */
 
-import { screen, nativeImage, systemPreferences, dialog, shell } from 'electron'
+import { screen, nativeImage, dialog, shell } from 'electron'
 import { join } from 'path'
 import { writeFileSync } from 'fs'
 import { tmpdir } from 'os'
@@ -22,11 +22,6 @@ import {
   setChatMenuTimer
 } from '../chat/ai-service'
 
-function hasScreenCapturePermission() {
-  if (process.platform !== 'darwin') return true
-  return systemPreferences.getMediaAccessStatus('screen') === 'granted'
-}
-
 async function requestScreenCapturePermission() {
   const { response } = await dialog.showMessageBox({
     type: 'warning',
@@ -43,10 +38,6 @@ async function requestScreenCapturePermission() {
 }
 
 export function startScreenshot() {
-  if (!hasScreenCapturePermission()) {
-    requestScreenCapturePermission()
-    return
-  }
   const chatWin = getChatWindow()
   const catWin = getCatWindow()
 
@@ -80,16 +71,30 @@ export function startScreenshot() {
     const { width, height } = display.size
     const scaleFactor = display.scaleFactor
 
-    const { Monitor, Window } = require('node-screenshots')
-    const monitors = Monitor.all()
-    const monitor = monitors[0]
-    if (!monitor) {
+    let capturedImage
+    let Window
+    try {
+      const nodeScreenshots = require('node-screenshots')
+      const Monitor = nodeScreenshots.Monitor
+      Window = nodeScreenshots.Window
+      const monitors = Monitor.all()
+      const monitor = monitors[0]
+      if (!monitor) {
+        if (catWin && !catWin.isDestroyed()) catWin.setOpacity(1)
+        if (chatWin && !chatWin.isDestroyed()) chatWin.setOpacity(1)
+        return
+      }
+
+      capturedImage = monitor.captureImageSync()
+    } catch {
       if (catWin && !catWin.isDestroyed()) catWin.setOpacity(1)
       if (chatWin && !chatWin.isDestroyed()) chatWin.setOpacity(1)
+      const screenshotWin = getScreenshotWindow()
+      if (screenshotWin && !screenshotWin.isDestroyed()) screenshotWin.hide()
+      requestScreenCapturePermission()
       return
     }
 
-    const capturedImage = monitor.captureImageSync()
     const pngBuffer = capturedImage.toPngSync()
     const screenshotImg = nativeImage.createFromBuffer(pngBuffer)
     setScreenshotImage(screenshotImg)

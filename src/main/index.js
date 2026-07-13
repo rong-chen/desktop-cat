@@ -22,6 +22,7 @@ import { setupNotifyIpc } from './features/notify'
 import { setupTasksIpc, scheduleAllTasks, stopAllTasks } from './features/tasks'
 import { setupScreenshotIpc } from './features/screenshot'
 import { createScreenshotWindow } from './features/screenshot/window'
+import { setupUpdater } from './features/updater'
 import { createTray } from './features/tray'
 import { registerShortcuts } from './shortcuts'
 
@@ -65,6 +66,7 @@ app.whenReady().then(async () => {
   registerShortcuts()
   scheduleAllTasks()
   startJokeIfDecompress()
+  setupUpdater()
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createCatWindow()
