@@ -18,7 +18,11 @@ echo "当前版本: $LATEST_TAG"
 echo "新版本: $NEW_TAG"
 
 # 更新 package.json 中的版本号（兼容 macOS 和 Windows Git Bash）
-sed -i "s/\"version\": \".*\"/\"version\": \"${NEW_VERSION}\"/" package.json
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  sed -i '' "s/\"version\": \".*\"/\"version\": \"${NEW_VERSION}\"/" package.json
+else
+  sed -i "s/\"version\": \".*\"/\"version\": \"${NEW_VERSION}\"/" package.json
+fi
 
 git add -A
 git commit -m "release: ${NEW_TAG}" || true

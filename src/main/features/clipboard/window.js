@@ -21,8 +21,6 @@ export function openClipboardWindow() {
     height: 600,
     title: '剪贴板历史 - Desktop Cat',
     icon: appIcon,
-    type: isMac ? 'panel' : undefined,
-    alwaysOnTop: true,
     backgroundColor: '#fffaf3',
     ...subWindowOptions(),
     webPreferences: {

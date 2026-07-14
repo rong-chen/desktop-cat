@@ -238,6 +238,11 @@ export function setupUpdater() {
             await shell.openPath(finalPath)
             return
           }
+          if (process.platform === 'win32' && file.url.endsWith('.exe')) {
+            await shell.openPath(finalPath)
+            app.quit()
+            return
+          }
           autoUpdater.quitAndInstall(false, true)
           return
         }

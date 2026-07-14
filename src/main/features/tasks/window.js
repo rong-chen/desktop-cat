@@ -21,7 +21,6 @@ export function openTasksWindow() {
     height: 550,
     title: '定时任务 - Desktop Cat',
     icon: appIcon,
-    type: isMac ? 'panel' : undefined,
     backgroundColor: '#fffaf3',
     ...subWindowOptions(),
     webPreferences: {
