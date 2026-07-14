@@ -199,9 +199,18 @@ function setText(text) {
   view.value.dispatch({ changes: { from: 0, to: view.value.state.doc.length, insert: text } })
 }
 
+function smartParse(text) {
+  try {
+    return JSON.parse(text)
+  } catch {
+    const unescaped = text.replace(/\\"/g, '"').replace(/\\\\/g, '\\')
+    return JSON.parse(unescaped)
+  }
+}
+
 function formatJson() {
   try {
-    const obj = JSON.parse(getText())
+    const obj = smartParse(getText())
     setText(JSON.stringify(obj, null, 2))
     hasError.value = false
     statusText.value = '格式化成功'
@@ -213,7 +222,7 @@ function formatJson() {
 
 function compressJson() {
   try {
-    const obj = JSON.parse(getText())
+    const obj = smartParse(getText())
     setText(JSON.stringify(obj))
     hasError.value = false
     statusText.value = '压缩成功'
@@ -247,7 +256,7 @@ async function openFile() {
       const text = await file.text()
       let formatted = text
       try {
-        formatted = JSON.stringify(JSON.parse(text), null, 2)
+        formatted = JSON.stringify(smartParse(text), null, 2)
       } catch {}
       addTab(formatted, file.name)
     }
@@ -353,9 +362,10 @@ onMounted(async () => {
       if (text && text.trim()) {
         setText(text)
         try {
-          const obj = JSON.parse(text)
-          setText(JSON.stringify(obj, null, 2))
-          tab.content = JSON.stringify(obj, null, 2)
+          const obj = smartParse(text)
+          const formatted = JSON.stringify(obj, null, 2)
+          setText(formatted)
+          tab.content = formatted
           statusText.value = '已从剪贴板粘贴并格式化'
         } catch {
           tab.content = text
@@ -368,7 +378,7 @@ onMounted(async () => {
   window.api.onJsonViewerOpenTab((content) => {
     let formatted = content
     try {
-      formatted = JSON.stringify(JSON.parse(content), null, 2)
+      formatted = JSON.stringify(smartParse(content), null, 2)
     } catch {}
     addTab(formatted, '新标签')
   })
