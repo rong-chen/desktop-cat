@@ -10,6 +10,7 @@ import { appIcon, isMac } from '../../shared/constants'
 import { getPreloadPath } from '../../shared/window-utils'
 
 let mainWindow = null
+let userDragged = false
 
 /**
  * 创建主窗口 - 桌面猫咪
@@ -51,9 +52,33 @@ export function createCatWindow() {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/cat/index.html'))
   }
+
+  screen.on('display-metrics-changed', () => {
+    if (userDragged || !mainWindow || mainWindow.isDestroyed()) return
+    const pos = getDefaultPosition()
+    mainWindow.setPosition(pos.x, pos.y)
+  })
+}
+
+function getDefaultPosition() {
+  const display = screen.getPrimaryDisplay()
+  const { x: waX, y: waY, width, height } = display.workArea
+  const { height: fullH } = display.size
+  const winSize = 130
+  const dockSize = fullH - height - waY
+  const margin = 20
+  return {
+    x: waX + width - winSize - margin - dockSize,
+    y: waY + height - winSize - margin
+  }
 }
 
 /** 获取猫咪主窗口实例 */
 export function getCatWindow() {
   return mainWindow
+}
+
+/** 标记用户已手动拖拽猫咪，不再自动归位 */
+export function setUserDragged() {
+  userDragged = true
 }

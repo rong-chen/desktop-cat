@@ -4,7 +4,7 @@
  */
 
 import { ipcMain, BrowserWindow, screen } from 'electron'
-import { getCatWindow } from './window'
+import { getCatWindow, setUserDragged } from './window'
 import { getChatWindow, hideChat, calcChatPosition, syncChatPosition } from '../chat/window'
 import { openSettingsWindow } from '../settings/window'
 import { openClipboardWindow } from '../clipboard/window'
@@ -60,6 +60,7 @@ export function setupCatIpc() {
       clearInterval(dragPollTimer)
       dragPollTimer = null
     }
+    setUserDragged()
     const chatWin = getChatWindow()
     if (chatWin && !chatWin.isDestroyed()) {
       const pos = calcChatPosition()
