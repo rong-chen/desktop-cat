@@ -81,11 +81,17 @@ export function setupChatIpc() {
     lastChatHeight = newH
     const [w] = chatWin.getSize()
     chatWin.setSize(w, newH)
-    // 保持底部位置不变，向上扩展
-    const [x, y] = chatWin.getPosition()
-    const dy = oldH - newH
-    if (dy !== 0 && oldH > 0) {
-      chatWin.setPosition(x, y + dy)
+    if (oldH > 0) {
+      // 保持底部位置不变，向上扩展
+      const [x, y] = chatWin.getPosition()
+      const dy = oldH - newH
+      if (dy !== 0) {
+        chatWin.setPosition(x, y + dy)
+      }
+    } else {
+      // 首次 resize，重新计算正确位置
+      const pos = calcChatPosition()
+      chatWin.setPosition(pos.x, pos.y)
     }
   })
 
