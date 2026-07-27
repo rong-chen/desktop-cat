@@ -20,6 +20,23 @@
     <div v-show="showEditor" class="mask-left" :style="maskLeftStyle"></div>
     <div v-show="showEditor" class="mask-right" :style="maskRightStyle"></div>
 
+    <!-- Selection resize/move layer (only before annotating) -->
+    <div
+      v-show="showEditor && phase === 'selected'"
+      class="move-overlay"
+      :style="fabricWrapStyle"
+      @mousedown.prevent="onResizeMouseDown('move', $event)"
+    ></div>
+    <template v-if="showEditor && phase === 'selected'">
+      <div
+        v-for="h in handlePositions"
+        :key="h.key"
+        class="resize-handle"
+        :style="{ left: h.x + 'px', top: h.y + 'px', cursor: h.cursor }"
+        @mousedown.prevent.stop="onResizeMouseDown(h.key, $event)"
+      ></div>
+    </template>
+
     <!-- Fabric editor container -->
     <div
       v-show="showEditor"
@@ -172,6 +189,8 @@ let isLoadingState = false
 let windowRects = []
 let hoveredRect = null
 let dragStartPos = null
+let resizeMode = null
+let resizeStart = null
 
 const palette = ['#ff0000', '#ff8800', '#ffee00', '#00cc44', '#0088ff', '#ffffff', '#000000']
 const toolList = [
@@ -249,6 +268,21 @@ const selRect = computed(() => ({
   w: Math.abs(selection.w),
   h: Math.abs(selection.h)
 }))
+
+const handlePositions = computed(() => {
+  const r = selRect.value
+  const hs = 4 // half handle size
+  return [
+    { key: 'nw', x: r.x - hs, y: r.y - hs, cursor: 'nwse-resize' },
+    { key: 'n', x: r.x + r.w / 2 - hs, y: r.y - hs, cursor: 'ns-resize' },
+    { key: 'ne', x: r.x + r.w - hs, y: r.y - hs, cursor: 'nesw-resize' },
+    { key: 'w', x: r.x - hs, y: r.y + r.h / 2 - hs, cursor: 'ew-resize' },
+    { key: 'e', x: r.x + r.w - hs, y: r.y + r.h / 2 - hs, cursor: 'ew-resize' },
+    { key: 'sw', x: r.x - hs, y: r.y + r.h - hs, cursor: 'nesw-resize' },
+    { key: 's', x: r.x + r.w / 2 - hs, y: r.y + r.h - hs, cursor: 'ns-resize' },
+    { key: 'se', x: r.x + r.w - hs, y: r.y + r.h - hs, cursor: 'nwse-resize' }
+  ]
+})
 
 const fabricWrapStyle = computed(() => ({
   left: selRect.value.x + 'px',
@@ -947,6 +981,70 @@ function onDblClick() {
   }
 }
 
+// --- Resize / Move selection ---
+function onResizeMouseDown(mode, e) {
+  resizeMode = mode
+  resizeStart = {
+    mx: e.clientX,
+    my: e.clientY,
+    x: selection.x,
+    y: selection.y,
+    w: selection.w,
+    h: selection.h
+  }
+  document.addEventListener('mousemove', onResizeMouseMove)
+  document.addEventListener('mouseup', onResizeMouseUp)
+}
+
+function onResizeMouseMove(e) {
+  if (!resizeStart) return
+  const dx = e.clientX - resizeStart.mx
+  const dy = e.clientY - resizeStart.my
+  const MIN = 10
+
+  if (resizeMode === 'move') {
+    let nx = resizeStart.x + dx
+    let ny = resizeStart.y + dy
+    nx = Math.max(0, Math.min(nx, screenW - resizeStart.w))
+    ny = Math.max(0, Math.min(ny, screenH - resizeStart.h))
+    selection.x = nx
+    selection.y = ny
+  } else {
+    let { x, y, w, h } = resizeStart
+
+    if (resizeMode.includes('w')) {
+      const newX = Math.max(0, x + dx)
+      const newW = w - (newX - x)
+      if (newW >= MIN) { selection.x = newX; selection.w = newW }
+    }
+    if (resizeMode.includes('e')) {
+      const newW = Math.min(screenW - x, w + dx)
+      if (newW >= MIN) { selection.w = newW }
+    }
+    if (resizeMode.includes('n')) {
+      const newY = Math.max(0, y + dy)
+      const newH = h - (newY - y)
+      if (newH >= MIN) { selection.y = newY; selection.h = newH }
+    }
+    if (resizeMode.includes('s')) {
+      const newH = Math.min(screenH - y, h + dy)
+      if (newH >= MIN) { selection.h = newH }
+    }
+  }
+}
+
+function onResizeMouseUp() {
+  document.removeEventListener('mousemove', onResizeMouseMove)
+  document.removeEventListener('mouseup', onResizeMouseUp)
+  if (resizeMode && resizeStart) {
+    const moved = resizeStart.x !== selection.x || resizeStart.y !== selection.y ||
+                  resizeStart.w !== selection.w || resizeStart.h !== selection.h
+    if (moved) initFabric()
+  }
+  resizeMode = null
+  resizeStart = null
+}
+
 function onRightClick() {
   if (fabricCanvas && fabricCanvas.getObjects().length > 0) {
     const objs = fabricCanvas.getObjects()
@@ -1093,6 +1191,8 @@ onMounted(() => {
 })
 onUnmounted(() => {
   document.removeEventListener('keydown', onKeyDown)
+  document.removeEventListener('mousemove', onResizeMouseMove)
+  document.removeEventListener('mouseup', onResizeMouseUp)
   if (toolbarObserver) toolbarObserver.disconnect()
   if (fabricCanvas) fabricCanvas.dispose()
 })
@@ -1136,6 +1236,22 @@ body,
   outline: 1.5px solid #0088ff;
   outline-offset: 0px;
   overflow: visible;
+}
+
+.move-overlay {
+  position: absolute;
+  z-index: 11;
+  cursor: move;
+  background: transparent;
+}
+
+.resize-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border: 1.5px solid #0088ff;
+  z-index: 12;
 }
 .fabric-wrap canvas {
   display: block;
