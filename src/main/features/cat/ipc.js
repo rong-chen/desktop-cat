@@ -4,8 +4,8 @@
  */
 
 import { ipcMain, BrowserWindow, screen } from 'electron'
-import { getCatWindow, setUserDragged } from './window'
-import { getChatWindow, hideChat, calcChatPosition, syncChatPosition } from '../chat/window'
+import { getCatWindow } from './window'
+import { getChatWindow, hideChat, calcChatPosition } from '../chat/window'
 import { openSettingsWindow } from '../settings/window'
 import { openClipboardWindow } from '../clipboard/window'
 import { openJsonViewerWindow, registerJsonViewerIpc } from '../json-viewer/window'
@@ -60,30 +60,12 @@ export function setupCatIpc() {
       clearInterval(dragPollTimer)
       dragPollTimer = null
     }
-    setUserDragged()
     const chatWin = getChatWindow()
     if (chatWin && !chatWin.isDestroyed()) {
       const pos = calcChatPosition()
       chatWin.setPosition(pos.x, pos.y)
       chatWin.webContents.send('chat-update', { placement: pos.placement })
     }
-  })
-
-  // 增量移动窗口位置
-  ipcMain.on('window-move', (_, { dx, dy }) => {
-    const catWin = getCatWindow()
-    const [x, y] = catWin.getPosition()
-    catWin.setPosition(x + dx, y + dy)
-    syncChatPosition()
-  })
-
-  // 获取主窗口位置和屏幕尺寸信息
-  ipcMain.handle('get-window-info', () => {
-    const catWin = getCatWindow()
-    const [x, y] = catWin.getPosition()
-    const [w, h] = catWin.getSize()
-    const { width, height } = screen.getPrimaryDisplay().workAreaSize
-    return { x, y, w, h, screenWidth: width, screenHeight: height }
   })
 
   // ---- 打开各功能窗口的 IPC ----

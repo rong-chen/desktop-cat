@@ -10,7 +10,6 @@ import { appIcon, isMac } from '../../shared/constants'
 import { getPreloadPath } from '../../shared/window-utils'
 
 let mainWindow = null
-let userDragged = false
 
 /**
  * 创建主窗口 - 桌面猫咪
@@ -61,7 +60,3 @@ export function getCatWindow() {
   return mainWindow
 }
 
-/** 标记用户已手动拖拽猫咪，不再自动归位 */
-export function setUserDragged() {
-  userDragged = true
-}

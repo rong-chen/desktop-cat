@@ -2,7 +2,6 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 const api = {
-  moveWindow: (dx, dy) => ipcRenderer.send('window-move', { dx, dy }),
   startDrag: (pos) => ipcRenderer.send('drag-start', pos),
   endDrag: () => ipcRenderer.send('drag-end'),
   setIgnoreMouse: (ignore) => ipcRenderer.send('set-ignore-mouse', ignore),
@@ -39,7 +38,6 @@ const api = {
   selectScriptDir: () => ipcRenderer.invoke('select-script-dir'),
   getTaskLogs: (taskId) => ipcRenderer.invoke('get-task-logs', taskId),
   testTask: (task) => ipcRenderer.invoke('test-task', task),
-  getWindowInfo: () => ipcRenderer.invoke('get-window-info'),
   onChatUpdate: (callback) => ipcRenderer.on('chat-update', (_, data) => callback(data)),
   getAiConfig: () => ipcRenderer.invoke('get-ai-config'),
   saveAiConfig: (config) => ipcRenderer.invoke('save-ai-config', config),
