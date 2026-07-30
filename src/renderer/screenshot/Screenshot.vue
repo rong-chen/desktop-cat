@@ -1055,6 +1055,11 @@ function onResizeMouseMove(e) {
       const newH = Math.min(screenH - y, h + dy)
       if (newH >= MIN) { selection.h = newH }
     }
+    if (fabricCanvas) {
+      const r = selRect.value
+      fabricCanvas.setDimensions({ width: r.w, height: r.h })
+      updateFabricBackground()
+    }
   }
 }
 
