@@ -996,6 +996,30 @@ function onResizeMouseDown(mode, e) {
   document.addEventListener('mouseup', onResizeMouseUp)
 }
 
+let moveBgCanvas = null
+function updateFabricBackground() {
+  if (!fabricCanvas || !bgCanvas.value) return
+  const r = selRect.value
+  if (!moveBgCanvas) moveBgCanvas = document.createElement('canvas')
+  moveBgCanvas.width = r.w * scaleFactor
+  moveBgCanvas.height = r.h * scaleFactor
+  const tc = moveBgCanvas.getContext('2d')
+  tc.drawImage(
+    bgCanvas.value,
+    r.x * scaleFactor,
+    r.y * scaleFactor,
+    r.w * scaleFactor,
+    r.h * scaleFactor,
+    0, 0,
+    moveBgCanvas.width,
+    moveBgCanvas.height
+  )
+  const fi = new FabricImage(moveBgCanvas, { selectable: false, evented: false })
+  fi.scaleToWidth(r.w)
+  fabricCanvas.backgroundImage = fi
+  fabricCanvas.renderAll()
+}
+
 function onResizeMouseMove(e) {
   if (!resizeStart) return
   const dx = e.clientX - resizeStart.mx
@@ -1009,6 +1033,7 @@ function onResizeMouseMove(e) {
     ny = Math.max(0, Math.min(ny, screenH - resizeStart.h))
     selection.x = nx
     selection.y = ny
+    updateFabricBackground()
   } else {
     let { x, y, w, h } = resizeStart
 
