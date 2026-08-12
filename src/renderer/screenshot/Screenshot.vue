@@ -24,7 +24,7 @@
     <div
       v-show="showEditor && phase === 'selected'"
       class="move-overlay"
-      :style="{ ...fabricWrapStyle, pointerEvents: activeTool === 'select' ? 'auto' : 'none' }"
+      :style="[fabricWrapStyle, { pointerEvents: activeTool === 'select' ? 'auto' : 'none' }]"
       @mousedown.prevent="onResizeMouseDown('move', $event)"
     ></div>
     <template v-if="showEditor && phase === 'selected'">
