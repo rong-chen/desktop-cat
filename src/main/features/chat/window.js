@@ -24,23 +24,24 @@ export function calcChatPosition() {
 
   const [mx, my] = catWin.getPosition()
   const [mw, mh] = catWin.getSize()
-  const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize
+  const display = screen.getPrimaryDisplay()
+  const { x: waX, y: waY, width: sw, height: sh } = display.workArea
   const padding = 4
 
   // 用实际窗口高度（如果窗口已创建）
   const chatH = (chatWindow && !chatWindow.isDestroyed()) ? chatWindow.getSize()[1] : CHAT_H
 
   const centerX = mx + Math.round(mw / 2) - Math.round(CHAT_W / 2)
-  let x = Math.max(padding, Math.min(centerX, sw - CHAT_W - padding))
+  let x = Math.max(waX + padding, Math.min(centerX, waX + sw - CHAT_W - padding))
 
   let y = my - chatH - CHAT_OFFSET
   let placement = 'top'
-  if (y < padding) {
+  if (y < waY + padding) {
     y = my + mh + CHAT_OFFSET
     placement = 'bottom'
   }
-  if (y + chatH > sh - padding) {
-    y = sh - chatH - padding
+  if (y + chatH > waY + sh - padding) {
+    y = waY + sh - chatH - padding
   }
 
   return { x, y, placement }
