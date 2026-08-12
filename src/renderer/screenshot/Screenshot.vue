@@ -20,14 +20,14 @@
     <div v-show="showEditor" class="mask-left" :style="maskLeftStyle"></div>
     <div v-show="showEditor" class="mask-right" :style="maskRightStyle"></div>
 
-    <!-- Selection resize/move layer (only before annotating and when select tool is active) -->
+    <!-- Selection resize/move layer -->
     <div
-      v-show="showEditor && phase === 'selected' && activeTool === 'select'"
+      v-show="showEditor && phase === 'selected'"
       class="move-overlay"
-      :style="fabricWrapStyle"
+      :style="{ ...fabricWrapStyle, pointerEvents: activeTool === 'select' ? 'auto' : 'none' }"
       @mousedown.prevent="onResizeMouseDown('move', $event)"
     ></div>
-    <template v-if="showEditor && phase === 'selected' && activeTool === 'select'">
+    <template v-if="showEditor && phase === 'selected'">
       <div
         v-for="h in handlePositions"
         :key="h.key"
