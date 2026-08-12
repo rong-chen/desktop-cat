@@ -176,7 +176,7 @@ let workAreaBottom = 0
 const phase = ref('idle')
 const mousePos = reactive({ x: 0, y: 0 })
 const selection = reactive({ x: 0, y: 0, w: 0, h: 0 })
-const activeTool = ref('rect')
+const activeTool = ref('select')
 const activeColor = ref('#ff0000')
 const activeWidth = ref(2)
 const colorFormat = ref('hex')
@@ -504,7 +504,8 @@ function setupFabricTool() {
   if (!fabricCanvas) return
   const isDrawMode = ['brush', 'eraser', 'spray', 'mosaic', 'blur'].includes(activeTool.value)
   fabricCanvas.isDrawingMode = isDrawMode
-  fabricCanvas.selection = activeTool.value === 'select'
+  // select 工具用于移动选区框，不用于选择画布上的绘制对象
+  fabricCanvas.selection = false
 
   if (activeTool.value === 'brush') {
     const brush = new PencilBrush(fabricCanvas)
@@ -531,11 +532,10 @@ function setupFabricTool() {
 
   fabricCanvas.defaultCursor = activeTool.value === 'select' ? 'default' : 'crosshair'
 
-  // Disable object interaction when not in select mode
-  const interactive = activeTool.value === 'select'
+  // 所有绘制对象都不可选择，select 工具只用于移动选区框
   fabricCanvas.forEachObject((obj) => {
-    obj.selectable = interactive
-    obj.evented = interactive
+    obj.selectable = false
+    obj.evented = false
   })
 
   fabricCanvas.off('mouse:down', onFabricDown)
@@ -657,7 +657,8 @@ function onFabricUp() {
   }
   drawObj = null
   drawStart = null
-  if (fabricCanvas) fabricCanvas.selection = activeTool.value === 'select'
+  // select 工具不启用 Fabric 的选择功能
+  if (fabricCanvas) fabricCanvas.selection = false
 }
 
 function onFabricTextClick(opt) {
