@@ -31,12 +31,18 @@ export function calcChatPosition() {
   // 用实际窗口高度（如果窗口已创建）
   const chatH = (chatWindow && !chatWindow.isDestroyed()) ? chatWindow.getSize()[1] : CHAT_H
 
+  // GIF 实际尺寸和在窗口中的位置
+  const gifSize = 120
+  const gifOffsetTop = mh - gifSize  // GIF 距离窗口顶部的偏移（在底部对齐）
+
   const centerX = mx + Math.round(mw / 2) - Math.round(CHAT_W / 2)
   let x = Math.max(waX + padding, Math.min(centerX, waX + sw - CHAT_W - padding))
 
-  let y = my - chatH - CHAT_OFFSET
+  // 气泡定位相对于 GIF 的顶部，而不是窗口顶部
+  let y = (my + gifOffsetTop) - chatH - CHAT_OFFSET
   let placement = 'top'
   if (y < waY + padding) {
+    // 如果上方空间不够，显示在 GIF 下方（窗口底部）
     y = my + mh + CHAT_OFFSET
     placement = 'bottom'
   }

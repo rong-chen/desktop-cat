@@ -35,4 +35,4 @@ export const defaultAiConfig = {
 // 聊天气泡窗口尺寸常量
 export const CHAT_W = 220
 export const CHAT_H = 320
-export const CHAT_OFFSET = 4
+export const CHAT_OFFSET = 2
